@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:derpyderps.lovable.app)",
+      "WebSearch",
+      "Bash(npm create:*)",
+      "Bash(npx create-vite@latest --template react-ts --yes .)",
+      "Bash(cp -r /Users/hunglin/ryanlin/derpyderps/vite-project/* /Users/hunglin/ryanlin/derpyderps/)",
+      "Bash(cp -r /Users/hunglin/ryanlin/derpyderps/vite-project/.gitignore /Users/hunglin/ryanlin/derpyderps/)",
+      "Bash(npm install:*)",
+      "Bash(npm cache:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e \"const v = require\\(''/Users/hunglin/ryanlin/derpyderps/node_modules/vite/package.json''\\); console.log\\(''vite:'', v.version\\)\")",
+      "Bash(node -e \"const r = require\\(''/Users/hunglin/ryanlin/derpyderps/node_modules/@vitejs/plugin-react/package.json''\\); console.log\\(''plugin-react:'', r.version\\)\")",
+      "Read(//Users/hunglin/.nvm/versions/**)",
+      "Read(//Users/hunglin/.nvm/versions/node/**)",
+      "Bash(chmod +x /Users/hunglin/ryanlin/derpyderps/start-dev.sh)",
+      "WebFetch(domain:jemsstrawberries.com)",
+      "WebFetch(domain:www.fingoose.com)"
+    ]
+  }
+}
