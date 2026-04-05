@@ -20,14 +20,14 @@ const COLOR_OPTIONS = [
 ];
 
 const emptySticker = (): Omit<Sticker, 'id'> => ({
-  name: '', image: '', price: 3.99, category_id: '', featured: false, description: ''
+  name: '', image: '', images: [], price: 3.99, category_id: '', featured: false, description: ''
 });
 
 const emptyCategory = (): Omit<Category, 'id'> => ({
   name: '', emoji: '🦆', color: 'from-blue-400 to-cyan-500', description: ''
 });
 
-function ImageUpload({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ImageUpload({ value, onChange, label = 'Image *' }: { value: string; onChange: (v: string) => void; label?: string }) {
   const [dragging, setDragging] = useState(false);
 
   const processFile = (file: File) => {
@@ -39,7 +39,7 @@ function ImageUpload({ value, onChange }: { value: string; onChange: (v: string)
 
   return (
     <div>
-      <label className="text-xs font-semibold text-slate-500 mb-1 block">Image *</label>
+      <label className="text-xs font-semibold text-slate-500 mb-1 block">{label}</label>
       <label
         className="flex flex-col items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed cursor-pointer transition-all"
         style={{
@@ -118,7 +118,7 @@ export default function AdminPage() {
     setStickerForm(emptySticker()); setEditingStickerId(null); setShowStickerForm(false);
   };
   const editSticker = (s: Sticker) => {
-    setStickerForm({ name: s.name, image: s.image, price: s.price, category_id: s.category_id, featured: s.featured ?? false, description: s.description ?? '' });
+    setStickerForm({ name: s.name, image: s.image, images: s.images ?? [], price: s.price, category_id: s.category_id, featured: s.featured ?? false, description: s.description ?? '' });
     setEditingStickerId(s.id); setShowStickerForm(true);
   };
   const deleteSticker = (id: string) => { if (confirm('Delete this sticker?')) setStickers(prev => prev.filter(s => s.id !== id)); };
@@ -250,6 +250,50 @@ export default function AdminPage() {
                   <input type="checkbox" id="feat" checked={stickerForm.featured ?? false} onChange={e => setStickerForm(f => ({ ...f, featured: e.target.checked }))} className="w-4 h-4 accent-blue-600" />
                   <label htmlFor="feat" className="text-sm font-medium text-slate-700">⭐ Featured sticker</label>
                 </div>
+              </div>
+
+              {/* Additional angles */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    Additional Angles / Photos
+                    <span className="ml-1.5 font-normal text-slate-400 normal-case">(shown in detail page gallery)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setStickerForm(f => ({ ...f, images: [...(f.images ?? []), ''] }))}
+                    className="text-xs font-bold text-[#2a80b9] hover:text-[#1f6a9e] border border-[#9ED4FB] px-3 py-1 rounded-lg transition-colors"
+                  >
+                    + Add Angle
+                  </button>
+                </div>
+                {(stickerForm.images ?? []).length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No additional angles yet — click "+ Add Angle" to upload more views.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(stickerForm.images ?? []).map((img, i) => (
+                      <div key={i} className="relative">
+                        <ImageUpload
+                          value={img}
+                          onChange={v => setStickerForm(f => {
+                            const imgs = [...(f.images ?? [])];
+                            imgs[i] = v;
+                            return { ...f, images: imgs };
+                          })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setStickerForm(f => {
+                            const imgs = (f.images ?? []).filter((_, idx) => idx !== i);
+                            return { ...f, images: imgs };
+                          })}
+                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow transition-colors"
+                          title="Remove this angle"
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 mt-4">

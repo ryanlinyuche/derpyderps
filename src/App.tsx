@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
 import AdminPage from './pages/AdminPage';
 import AboutPage from './pages/AboutPage';
+import StickerDetailPage from './pages/StickerDetailPage';
 import Navbar from './components/Navbar';
 import CartDrawer from './components/CartDrawer';
 import { CartProvider } from './context/CartContext';
@@ -17,6 +18,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/category/:id" element={<CategoryPage />} />
+            <Route path="/sticker/:id" element={<StickerDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Routes>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Sticker } from '../data/stickers';
 import { useCart } from '../context/CartContext';
 import { useInView } from '../hooks/useInView';
@@ -10,6 +11,7 @@ interface Props {
 
 export default function StickerCard({ sticker, index = 0 }: Props) {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
   const [added, setAdded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const { ref, inView } = useInView(0.1);
@@ -17,7 +19,8 @@ export default function StickerCard({ sticker, index = 0 }: Props) {
   // Stagger capped at 5 to avoid long waits in large grids
   const delay = Math.min(index % 6, 5) * 75;
 
-  const handleAdd = () => {
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
     addToCart(sticker);
     setAdded(true);
     setTimeout(() => setAdded(false), 1200);
@@ -31,7 +34,8 @@ export default function StickerCard({ sticker, index = 0 }: Props) {
         transform: inView ? 'translateY(0) scale(1)' : 'translateY(36px) scale(0.97)',
         transition: `opacity 0.55s cubic-bezier(.22,1,.36,1) ${delay}ms, transform 0.65s cubic-bezier(.22,1,.36,1) ${delay}ms`,
       }}
-      className="group relative bg-white rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-shadow duration-300 overflow-hidden"
+      className="group relative bg-white rounded-2xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-shadow duration-300 overflow-hidden cursor-pointer"
+      onClick={() => navigate(`/sticker/${sticker.id}`)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

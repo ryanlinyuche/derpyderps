@@ -2,6 +2,7 @@ export interface Sticker {
   id: string;
   name: string;
   image: string;
+  images?: string[];   // additional angle / detail images
   price: number;
   category_id: string;
   featured?: boolean;
