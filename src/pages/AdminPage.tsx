@@ -27,6 +27,56 @@ const emptyCategory = (): Omit<Category, 'id'> => ({
   name: '', emoji: '🦆', color: 'from-blue-400 to-cyan-500', description: ''
 });
 
+function ImageUpload({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [dragging, setDragging] = useState(false);
+
+  const processFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => onChange(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div>
+      <label className="text-xs font-semibold text-slate-500 mb-1 block">Image *</label>
+      <label
+        className="flex flex-col items-center justify-center gap-2 w-full rounded-xl border-2 border-dashed cursor-pointer transition-all"
+        style={{
+          borderColor: dragging ? '#2a80b9' : '#9ED4FB',
+          background: dragging ? 'rgba(42,128,185,0.05)' : '#DEF1FF',
+          padding: value ? '12px' : '24px',
+        }}
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) processFile(f); }}
+      >
+        {value ? (
+          <div className="flex items-center gap-3 w-full">
+            <img src={value} alt="preview" className="w-16 h-16 object-contain rounded-lg bg-white mix-blend-multiply flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#264653] mb-1">Image uploaded ✓</p>
+              <p className="text-xs text-slate-400">Click to replace</p>
+            </div>
+            <button
+              type="button"
+              onClick={e => { e.preventDefault(); onChange(''); }}
+              className="text-red-400 hover:text-red-600 text-lg leading-none flex-shrink-0"
+            >×</button>
+          </div>
+        ) : (
+          <>
+            <span className="text-3xl">🖼️</span>
+            <p className="text-sm font-semibold text-[#264653]">Drop image here or click to upload</p>
+            <p className="text-xs text-slate-400">PNG, JPG, JPEG, WEBP</p>
+          </>
+        )}
+        <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); }} />
+      </label>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const navigate = useNavigate();
   const [loggedIn, setLoggedIn] = useState(isAdminLoggedIn());
@@ -183,8 +233,7 @@ export default function AdminPage() {
                   <input className="input-field" type="number" step="0.01" min="0" value={stickerForm.price} onChange={e => setStickerForm(f => ({ ...f, price: parseFloat(e.target.value) }))} />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="text-xs font-semibold text-slate-500 mb-1 block">Image URL *</label>
-                  <input className="input-field" placeholder="https://..." value={stickerForm.image} onChange={e => setStickerForm(f => ({ ...f, image: e.target.value }))} />
+                  <ImageUpload value={stickerForm.image} onChange={v => setStickerForm(f => ({ ...f, image: v }))} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 mb-1 block">Category *</label>
@@ -202,13 +251,7 @@ export default function AdminPage() {
                   <label htmlFor="feat" className="text-sm font-medium text-slate-700">⭐ Featured sticker</label>
                 </div>
               </div>
-              {/* Preview */}
-              {stickerForm.image && (
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="text-xs text-slate-400">Preview:</span>
-                  <img src={stickerForm.image} alt="preview" className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] p-1 border" onError={e => (e.currentTarget.style.display = 'none')} />
-                </div>
-              )}
+
               <div className="flex gap-2 mt-4">
                 <button onClick={saveSticker} className="bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95">
                   {editingStickerId ? 'Save Changes' : 'Add Sticker'}
