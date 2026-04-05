@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sticker } from '../data/stickers';
+import type { Sticker } from '../data/stickers';
 import { useCart } from '../context/CartContext';
 import { useInView } from '../hooks/useInView';
 

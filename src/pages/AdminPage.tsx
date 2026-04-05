@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   getStickers, getCategories, saveStickers, saveCategories,
   isAdminLoggedIn, adminLogin, adminLogout,
-  Sticker, Category, DEFAULT_STICKERS, DEFAULT_CATEGORIES
+  DEFAULT_STICKERS, DEFAULT_CATEGORIES
 } from '../data/stickers';
+import type { Sticker, Category } from '../data/stickers';
 
 const EMOJI_OPTIONS = ['🏮','🦆','⭐','❄️','🍁','🍂','🎃','🐣','🌸','🎄','🎉','🧸'];
 const COLOR_OPTIONS = [

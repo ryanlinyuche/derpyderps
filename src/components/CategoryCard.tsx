@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Category, Sticker } from '../data/stickers';
+import type { Category, Sticker } from '../data/stickers';
 import { useInView } from '../hooks/useInView';
 
 interface Props {

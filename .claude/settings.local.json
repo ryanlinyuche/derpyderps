@@ -16,7 +16,14 @@
       "Read(//Users/hunglin/.nvm/versions/node/**)",
       "Bash(chmod +x /Users/hunglin/ryanlin/derpyderps/start-dev.sh)",
       "WebFetch(domain:jemsstrawberries.com)",
-      "WebFetch(domain:www.fingoose.com)"
+      "WebFetch(domain:www.fingoose.com)",
+      "Bash(source ~/.nvm/nvm.sh)",
+      "Bash(npm run:*)",
+      "Bash(sed -i '' \"s/^import { Sticker } from ''\\\\.\\\\.\\\\/data\\\\/stickers'';/import type { Sticker } from ''..\\\\/data\\\\/stickers'';/\" src/components/FeaturedCarousel.tsx src/components/StickerCard.tsx src/components/StickerMarquee.tsx)",
+      "Bash(sed -i '' \"s/^import { Category, Sticker } from ''\\\\.\\\\.\\\\/data\\\\/stickers'';/import type { Category, Sticker } from ''..\\\\/data\\\\/stickers'';/\" src/components/CategoryCard.tsx)",
+      "Bash(sed -i '' \"s/import { createContext, useContext, useState, ReactNode }/import { createContext, useContext, useState } from ''react'';\\\\nimport type { ReactNode }/\" src/context/CartContext.tsx)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { Sticker } from '../data/stickers';
+import type { Sticker } from '../data/stickers';
 
 interface Props { stickers: Sticker[]; }
 
