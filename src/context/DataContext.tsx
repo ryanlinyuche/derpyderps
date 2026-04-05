@@ -3,6 +3,17 @@ import { supabase } from '../lib/supabase';
 import type { Sticker, Category } from '../data/stickers';
 import { DEFAULT_STICKERS, DEFAULT_CATEGORIES } from '../data/stickers';
 
+const CACHE_KEY_STICKERS   = 'dd_cache_stickers';
+const CACHE_KEY_CATEGORIES = 'dd_cache_categories';
+
+function readCache<T>(key: string): T[] {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : []; }
+  catch { return []; }
+}
+function writeCache(key: string, data: unknown[]) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
+
 interface DataCtx {
   stickers: Sticker[];
   categories: Category[];
@@ -23,11 +34,16 @@ export function useData() {
 }
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [stickers, setStickers] = useState<Sticker[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ── Seed from cache immediately so the UI is instant on reload ──────────────
+  const cachedStickers   = readCache<Sticker>(CACHE_KEY_STICKERS);
+  const cachedCategories = readCache<Category>(CACHE_KEY_CATEGORIES);
 
-  // ── Initial load + seed defaults if empty ──────────────────────────────────
+  const [stickers,   setStickers]   = useState<Sticker[]>(cachedStickers);
+  const [categories, setCategories] = useState<Category[]>(cachedCategories);
+  // Only show a loading state on the very first visit (empty cache)
+  const [loading, setLoading] = useState(cachedStickers.length === 0 && cachedCategories.length === 0);
+
+  // ── Fetch fresh data from Supabase in the background ──────────────────────
   useEffect(() => {
     async function load() {
       const [{ data: cats }, { data: stks }] = await Promise.all([
@@ -36,16 +52,22 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       if (!cats || cats.length === 0) {
-        // First-time setup: seed default categories & stickers
+        // First-ever load: seed defaults into Supabase
         await supabase.from('categories').insert(DEFAULT_CATEGORIES);
         await supabase.from('stickers').insert(
           DEFAULT_STICKERS.map(s => ({ ...s, images: s.images ?? [] }))
         );
         setCategories(DEFAULT_CATEGORIES);
         setStickers(DEFAULT_STICKERS);
+        writeCache(CACHE_KEY_CATEGORIES, DEFAULT_CATEGORIES);
+        writeCache(CACHE_KEY_STICKERS, DEFAULT_STICKERS);
       } else {
-        setCategories(cats as Category[]);
-        setStickers((stks ?? []) as Sticker[]);
+        const freshCats = cats as Category[];
+        const freshStks = (stks ?? []) as Sticker[];
+        setCategories(freshCats);
+        setStickers(freshStks);
+        writeCache(CACHE_KEY_CATEGORIES, freshCats);
+        writeCache(CACHE_KEY_STICKERS, freshStks);
       }
       setLoading(false);
     }
@@ -57,28 +79,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const stickersCh = supabase
       .channel('stickers-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stickers' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'INSERT' || eventType === 'UPDATE') {
-          setStickers(prev => {
-            const filtered = prev.filter(s => s.id !== (n as Sticker).id);
-            return [...filtered, n as Sticker];
-          });
-        } else if (eventType === 'DELETE') {
-          setStickers(prev => prev.filter(s => s.id !== (o as Sticker).id));
-        }
+        setStickers(prev => {
+          let next: Sticker[];
+          if (eventType === 'DELETE') {
+            next = prev.filter(s => s.id !== (o as Sticker).id);
+          } else {
+            next = [...prev.filter(s => s.id !== (n as Sticker).id), n as Sticker];
+          }
+          writeCache(CACHE_KEY_STICKERS, next);
+          return next;
+        });
       })
       .subscribe();
 
     const categoriesCh = supabase
       .channel('categories-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, ({ eventType, new: n, old: o }) => {
-        if (eventType === 'INSERT' || eventType === 'UPDATE') {
-          setCategories(prev => {
-            const filtered = prev.filter(c => c.id !== (n as Category).id);
-            return [...filtered, n as Category];
-          });
-        } else if (eventType === 'DELETE') {
-          setCategories(prev => prev.filter(c => c.id !== (o as Category).id));
-        }
+        setCategories(prev => {
+          let next: Category[];
+          if (eventType === 'DELETE') {
+            next = prev.filter(c => c.id !== (o as Category).id);
+          } else {
+            next = [...prev.filter(c => c.id !== (n as Category).id), n as Category];
+          }
+          writeCache(CACHE_KEY_CATEGORIES, next);
+          return next;
+        });
       })
       .subscribe();
 
