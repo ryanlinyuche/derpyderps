@@ -8,7 +8,7 @@ export default function StickerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
-  const { stickers, categories } = useData();
+  const { stickers, categories, loading } = useData();
 
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
@@ -17,6 +17,15 @@ export default function StickerDetailPage() {
   const sticker = useMemo(() => stickers.find(s => s.id === id) ?? null, [stickers, id]);
   const category = useMemo(() => categories.find(c => c.id === sticker?.category_id) ?? null, [categories, sticker]);
   const related = useMemo(() => stickers.filter(s => s.category_id === sticker?.category_id && s.id !== id).slice(0, 6), [stickers, sticker, id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <div className="text-5xl animate-float">🦆</div>
+        <p className="text-slate-400 text-sm">Loading...</p>
+      </div>
+    );
+  }
 
   if (!sticker) {
     return (
