@@ -1,11 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  getStickers, getCategories, saveStickers, saveCategories,
-  isAdminLoggedIn, adminLogin, adminLogout,
-  DEFAULT_STICKERS, DEFAULT_CATEGORIES
-} from '../data/stickers';
+import { isAdminLoggedIn, adminLogin, adminLogout } from '../data/stickers';
 import type { Sticker, Category } from '../data/stickers';
+import { useData } from '../context/DataContext';
 
 const EMOJI_OPTIONS = ['🏮','🦆','⭐','❄️','🍁','🍂','🎃','🐣','🌸','🎄','🎉','🧸'];
 const COLOR_OPTIONS = [
@@ -167,25 +164,21 @@ function StickerForm({
 // ─── Main admin page ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   const navigate = useNavigate();
+  const { stickers, categories, upsertSticker, deleteSticker: dbDeleteSticker, upsertCategory, deleteCategory: dbDeleteCategory, resetDefaults } = useData();
+
   const [loggedIn, setLoggedIn] = useState(isAdminLoggedIn());
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const [stickers, setStickers] = useState<Sticker[]>(getStickers());
-  const [categories, setCategories] = useState<Category[]>(getCategories());
-
   // Navigation: null = category grid, string = category id being edited
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
 
-  // Category form (used both for "add new" and "edit existing" in detail view)
+  // Category form
   const [catForm, setCatForm] = useState<Omit<Category, 'id'>>(emptyCategory());
   const [showAddCatForm, setShowAddCatForm] = useState(false);
 
   // Sticker form inside a category detail
   const [stickerFormData, setStickerFormData] = useState<(Omit<Sticker, 'id'> & { id?: string }) | null>(null);
-
-  useEffect(() => { saveStickers(stickers); }, [stickers]);
-  useEffect(() => { saveCategories(categories); }, [categories]);
 
   const handleLogin = () => {
     if (adminLogin(password)) { setLoggedIn(true); setError(''); }
@@ -193,9 +186,9 @@ export default function AdminPage() {
   };
   const handleLogout = () => { adminLogout(); setLoggedIn(false); navigate('/'); };
 
-  const resetAll = () => {
+  const resetAll = async () => {
     if (confirm('Reset to default stickers and categories?')) {
-      setStickers(DEFAULT_STICKERS); setCategories(DEFAULT_CATEGORIES);
+      await resetDefaults();
     }
   };
 
@@ -206,38 +199,34 @@ export default function AdminPage() {
     setActiveCatId(cat.id);
   };
 
-  const saveCatEdits = () => {
+  const saveCatEdits = async () => {
     if (!catForm.name || !activeCatId) return;
-    setCategories(prev => prev.map(c => c.id === activeCatId ? { ...catForm, id: activeCatId } : c));
+    await upsertCategory({ ...catForm, id: activeCatId });
   };
 
-  const saveNewCat = () => {
+  const saveNewCat = async () => {
     if (!catForm.name) return;
-    setCategories(prev => [...prev, { ...catForm, id: Date.now().toString() }]);
+    await upsertCategory(catForm);
     setCatForm(emptyCategory());
     setShowAddCatForm(false);
   };
 
-  const deleteCat = (id: string) => {
+  const deleteCat = async (id: string) => {
     if (confirm("Delete this category? Stickers in it won't be deleted.")) {
-      setCategories(prev => prev.filter(c => c.id !== id));
+      await dbDeleteCategory(id);
       if (activeCatId === id) setActiveCatId(null);
     }
   };
 
   // ── Sticker actions ──
-  const saveSticker = (data: Omit<Sticker, 'id'> & { id?: string }) => {
+  const saveSticker = async (data: Omit<Sticker, 'id'> & { id?: string }) => {
     if (!data.name || !data.image) return;
-    if (data.id) {
-      setStickers(prev => prev.map(s => s.id === data.id ? { ...data, id: data.id! } : s));
-    } else {
-      setStickers(prev => [...prev, { ...data, id: Date.now().toString() }]);
-    }
+    await upsertSticker(data);
     setStickerFormData(null);
   };
 
-  const deleteSticker = (id: string) => {
-    if (confirm('Delete this sticker?')) setStickers(prev => prev.filter(s => s.id !== id));
+  const deleteSticker = async (id: string) => {
+    if (confirm('Delete this sticker?')) await dbDeleteSticker(id);
   };
 
   // ─────────────────────────────────────────────────────────────────────────────

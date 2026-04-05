@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { getStickers, getCategories } from '../data/stickers';
+import { useData } from '../context/DataContext';
 import StickerCard from '../components/StickerCard';
 import { useInView } from '../hooks/useInView';
 
@@ -18,8 +18,7 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 
 export default function CategoryPage() {
   const { id } = useParams();
-  const categories = getCategories();
-  const stickers = getStickers();
+  const { stickers, categories } = useData();
   const category = categories.find(c => c.id === id);
   const catStickers = stickers.filter(s => s.category_id === id);
 

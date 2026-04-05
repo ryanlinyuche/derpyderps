@@ -1,33 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getStickers, getCategories } from '../data/stickers';
-import type { Sticker, Category } from '../data/stickers';
+import { useData } from '../context/DataContext';
+import type { Sticker } from '../data/stickers';
 import { useCart } from '../context/CartContext';
 
 export default function StickerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { stickers, categories } = useData();
 
-  const [sticker, setSticker] = useState<Sticker | null>(null);
-  const [category, setCategory] = useState<Category | null>(null);
-  const [related, setRelated] = useState<Sticker[]>([]);
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
 
-  useEffect(() => {
-    const stickers = getStickers();
-    const categories = getCategories();
-    const found = stickers.find(s => s.id === id) ?? null;
-    setSticker(found);
-    setActiveImg(0);
-    setQty(1);
-    if (found) {
-      setCategory(categories.find(c => c.id === found.category_id) ?? null);
-      setRelated(stickers.filter(s => s.category_id === found.category_id && s.id !== found.id).slice(0, 6));
-    }
-  }, [id]);
+  const sticker = useMemo(() => stickers.find(s => s.id === id) ?? null, [stickers, id]);
+  const category = useMemo(() => categories.find(c => c.id === sticker?.category_id) ?? null, [categories, sticker]);
+  const related = useMemo(() => stickers.filter(s => s.category_id === sticker?.category_id && s.id !== id).slice(0, 6), [stickers, sticker, id]);
 
   if (!sticker) {
     return (

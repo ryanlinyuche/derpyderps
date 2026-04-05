@@ -1,4 +1,4 @@
-import { getStickers, getCategories } from '../data/stickers';
+import { useData } from '../context/DataContext';
 import FeaturedCarousel from '../components/FeaturedCarousel';
 import CategoryCard from '../components/CategoryCard';
 import StickerMarquee from '../components/StickerMarquee';
@@ -22,8 +22,7 @@ function ScrollReveal({ children, delay = 0, className = '' }: { children: React
 }
 
 export default function HomePage() {
-  const stickers = getStickers();
-  const categories = getCategories();
+  const { stickers, categories } = useData();
   const featured = stickers.filter(s => s.featured);
 
   return (
@@ -59,9 +58,11 @@ export default function HomePage() {
       </div>
 
       {/* ── Featured Carousel ── */}
-      <ScrollReveal className="max-w-6xl mx-auto px-4 pt-10">
-        <FeaturedCarousel stickers={featured} />
-      </ScrollReveal>
+      {featured.length > 0 && (
+        <ScrollReveal className="max-w-6xl mx-auto px-4 pt-10">
+          <FeaturedCarousel stickers={featured} />
+        </ScrollReveal>
+      )}
 
       {/* ── Categories ── */}
       <section className="max-w-6xl mx-auto px-4 pb-16">

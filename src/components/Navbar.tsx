@@ -1,13 +1,14 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { getCategories, isAdminLoggedIn } from '../data/stickers';
+import { useData } from '../context/DataContext';
+import { isAdminLoggedIn } from '../data/stickers';
 import { useState } from 'react';
 
 export default function Navbar() {
   const { items, setIsOpen } = useCart();
   const totalQty = items.reduce((s, i) => s + i.qty, 0);
   const adminLoggedIn = isAdminLoggedIn();
-  const categories = getCategories();
+  const { categories } = useData();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
