@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { isAdminLoggedIn, adminLogin, adminLogout } from '../data/stickers';
 import type { Sticker, Category } from '../data/stickers';
 import { useData } from '../context/DataContext';
+import type { BannerSettings } from '../context/DataContext';
+import { DEFAULT_BANNER } from '../context/DataContext';
 
 const EMOJI_OPTIONS = ['🏮','🦆','⭐','❄️','🍁','🍂','🎃','🐣','🌸','🎄','🎉','🧸'];
 const COLOR_OPTIONS = [
@@ -164,14 +166,20 @@ function StickerForm({
 // ─── Main admin page ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { stickers, categories, upsertSticker, deleteSticker: dbDeleteSticker, upsertCategory, deleteCategory: dbDeleteCategory, resetDefaults } = useData();
+  const { stickers, categories, banner, upsertSticker, deleteSticker: dbDeleteSticker, upsertCategory, deleteCategory: dbDeleteCategory, saveBanner, resetDefaults } = useData();
 
   const [loggedIn, setLoggedIn] = useState(isAdminLoggedIn());
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Navigation: null = category grid, string = category id being edited
+  // Navigation: null = category grid, string = category id, 'banner' = banner editor
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
+  const [showBannerEditor, setShowBannerEditor] = useState(false);
+
+  // Banner form state
+  const [bannerForm, setBannerForm] = useState<BannerSettings>(DEFAULT_BANNER);
+  const [bannerSaved, setBannerSaved] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   // Category form
   const [catForm, setCatForm] = useState<Omit<Category, 'id'>>(emptyCategory());
@@ -190,6 +198,19 @@ export default function AdminPage() {
     if (confirm('Reset to default stickers and categories?')) {
       await resetDefaults();
     }
+  };
+
+  // ── Banner actions ──
+  const openBannerEditor = () => {
+    setBannerForm({ ...banner });
+    setNewTag('');
+    setShowBannerEditor(true);
+  };
+
+  const handleSaveBanner = async () => {
+    await saveBanner(bannerForm);
+    setBannerSaved(true);
+    setTimeout(() => setBannerSaved(false), 1800);
   };
 
   // ── Category actions ──
@@ -258,27 +279,30 @@ export default function AdminPage() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SHARED HEADER
+  const isSubPage = activeCatId || showBannerEditor;
   const Header = () => (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
-        {activeCatId && (
-          <button onClick={() => setActiveCatId(null)}
+        {isSubPage && (
+          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); }}
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#2a80b9] transition-colors">
-            ← All Categories
+            ← Admin Panel
           </button>
         )}
-        {!activeCatId && (
+        {!isSubPage && (
           <div>
             <h1 className="font-display text-3xl text-[#264653]">⚙️ Admin Panel</h1>
-            <p className="text-slate-500 text-sm">Select a category to manage its stickers</p>
+            <p className="text-slate-500 text-sm">Manage your shop</p>
           </div>
         )}
       </div>
       <div className="flex gap-2">
-        <button onClick={resetAll}
-          className="text-xs text-orange-500 hover:text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg transition-colors">
-          Reset defaults
-        </button>
+        {!isSubPage && (
+          <button onClick={resetAll}
+            className="text-xs text-orange-500 hover:text-orange-700 border border-orange-200 px-3 py-1.5 rounded-lg transition-colors">
+            Reset defaults
+          </button>
+        )}
         <button onClick={handleLogout}
           className="text-sm text-red-500 hover:text-red-700 border border-red-200 px-3 py-1.5 rounded-lg transition-colors">
           Logout
@@ -427,6 +451,97 @@ export default function AdminPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // BANNER EDITOR VIEW
+  if (showBannerEditor) return (
+    <main className="max-w-4xl mx-auto px-4 py-8">
+      <Header />
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9ED4FB] to-[#2a80b9] flex items-center justify-center text-xl shadow">🎨</div>
+        <div>
+          <h2 className="font-display text-2xl text-[#264653]">Home Banner</h2>
+          <p className="text-xs text-slate-400">Edits appear live for all visitors</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] p-5 flex flex-col gap-4">
+        {/* Live preview */}
+        <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: '#9ED4FB' }}>
+          <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-2">Preview</p>
+          <p className="font-display text-2xl md:text-3xl leading-tight" style={{ color: '#264653' }}>
+            {bannerForm.title || 'Welcome to'}<br />
+            <span style={{ color: '#2a80b9' }}>{bannerForm.titleHighlight || 'Derpy Derps'}</span> {bannerForm.emoji}
+          </p>
+          <p className="text-sm mt-2 mb-3" style={{ color: '#264653', opacity: 0.75 }}>{bannerForm.subtitle}</p>
+          <div className="flex flex-wrap gap-2">
+            {bannerForm.tags.map(t => (
+              <span key={t} className="text-xs px-3 py-1 rounded-full border" style={{ background: 'rgba(38,70,83,0.1)', color: '#264653', borderColor: 'rgba(38,70,83,0.2)' }}>{t}</span>
+            ))}
+          </div>
+        </div>
+
+        {/* Fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Title (line 1)</label>
+            <input className="input-field" value={bannerForm.title}
+              onChange={e => setBannerForm(f => ({ ...f, title: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Title Highlight (line 2, blue)</label>
+            <input className="input-field" value={bannerForm.titleHighlight}
+              onChange={e => setBannerForm(f => ({ ...f, titleHighlight: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Emoji</label>
+            <input className="input-field" value={bannerForm.emoji} maxLength={4}
+              onChange={e => setBannerForm(f => ({ ...f, emoji: e.target.value }))} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Subtitle</label>
+            <textarea className="input-field resize-none" rows={2} value={bannerForm.subtitle}
+              onChange={e => setBannerForm(f => ({ ...f, subtitle: e.target.value }))} />
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-2 block">Badges</label>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {bannerForm.tags.map((tag, i) => (
+              <span key={i} className="flex items-center gap-1.5 text-xs bg-[#DEF1FF] text-[#264653] px-3 py-1.5 rounded-full border border-[#9ED4FB]">
+                {tag}
+                <button onClick={() => setBannerForm(f => ({ ...f, tags: f.tags.filter((_, idx) => idx !== i) }))}
+                  className="text-red-400 hover:text-red-600 font-bold leading-none">×</button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input className="input-field flex-1" placeholder="Add a badge…" value={newTag}
+              onChange={e => setNewTag(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newTag.trim()) {
+                  setBannerForm(f => ({ ...f, tags: [...f.tags, newTag.trim()] }));
+                  setNewTag('');
+                }
+              }} />
+            <button
+              onClick={() => { if (newTag.trim()) { setBannerForm(f => ({ ...f, tags: [...f.tags, newTag.trim()] })); setNewTag(''); } }}
+              className="bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#2a80b9] px-4 py-2 rounded-xl font-semibold text-sm transition-colors">
+              + Add
+            </button>
+          </div>
+        </div>
+
+        <button onClick={handleSaveBanner}
+          className="w-full py-3 rounded-2xl font-bold text-white text-sm transition-all active:scale-95 shadow-md"
+          style={{ background: bannerSaved ? '#22c55e' : '#2a80b9' }}>
+          {bannerSaved ? '✓ Saved!' : 'Save Banner'}
+        </button>
+      </div>
+    </main>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // CATEGORY GRID (main view)
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
@@ -493,6 +608,22 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Banner card */}
+      <button
+        onClick={openBannerEditor}
+        className="group w-full bg-gradient-to-r from-[#9ED4FB]/40 to-[#DEF1FF] rounded-2xl border border-[#9ED4FB] hover:shadow-md text-left transition-all hover:-translate-y-0.5 active:scale-[0.99] mb-4 overflow-hidden"
+      >
+        <div className="h-1.5 bg-gradient-to-r from-[#9ED4FB] to-[#2a80b9]" />
+        <div className="p-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#9ED4FB] to-[#2a80b9] flex items-center justify-center text-2xl shadow flex-shrink-0">🎨</div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-[#264653] group-hover:text-[#2a80b9] transition-colors">Home Banner</p>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">"{banner.title} {banner.titleHighlight}" · {banner.tags.length} badge{banner.tags.length !== 1 ? 's' : ''}</p>
+          </div>
+          <span className="text-slate-300 group-hover:text-[#2a80b9] text-xl transition-colors flex-shrink-0">›</span>
+        </div>
+      </button>
 
       {/* Category grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

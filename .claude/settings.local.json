@@ -26,7 +26,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(curl -s \"http://localhost:5173/admin\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx vercel:*)"
     ]
   }
 }

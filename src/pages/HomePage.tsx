@@ -22,7 +22,7 @@ function ScrollReveal({ children, delay = 0, className = '' }: { children: React
 }
 
 export default function HomePage() {
-  const { stickers, categories } = useData();
+  const { stickers, categories, banner } = useData();
   const featured = stickers.filter(s => s.featured);
 
   return (
@@ -35,14 +35,14 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
           <div className="max-w-xl">
             <h1 className="font-display text-4xl md:text-6xl mb-4 leading-tight animate-fade-up" style={{ color: '#264653' }}>
-              Welcome to<br />
-              <span style={{ color: '#2a80b9' }}>Derpy Derps</span> 🦆
+              {banner.title}<br />
+              <span style={{ color: '#2a80b9' }}>{banner.titleHighlight}</span> {banner.emoji}
             </h1>
             <p className="text-lg mb-6 animate-fade-up-d1" style={{ color: '#264653', opacity: 0.75 }}>
-              The cutest, goofiest, and most adorable stickers on the internet!
+              {banner.subtitle}
             </p>
             <div className="flex flex-wrap gap-2 animate-fade-up-d2">
-              {['✨ Hand-drawn designs', '🚀 Fast shipping', '💕 Made with love'].map(tag => (
+              {banner.tags.map(tag => (
                 <span key={tag} className="text-sm px-4 py-1.5 rounded-full border" style={{ background: 'rgba(38,70,83,0.08)', color: '#264653', borderColor: 'rgba(38,70,83,0.2)' }}>
                   {tag}
                 </span>

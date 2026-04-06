@@ -3,25 +3,53 @@ import { supabase } from '../lib/supabase';
 import type { Sticker, Category } from '../data/stickers';
 import { DEFAULT_STICKERS, DEFAULT_CATEGORIES } from '../data/stickers';
 
+// ── Banner ─────────────────────────────────────────────────────────────────────
+export interface BannerSettings {
+  title: string;
+  titleHighlight: string;
+  emoji: string;
+  subtitle: string;
+  tags: string[];
+}
+
+export const DEFAULT_BANNER: BannerSettings = {
+  title: 'Welcome to',
+  titleHighlight: 'Derpy Derps',
+  emoji: '🦆',
+  subtitle: 'The cutest, goofiest, and most adorable stickers on the internet!',
+  tags: ['✨ Hand-drawn designs', '🚀 Fast shipping', '💕 Made with love'],
+};
+
+const BANNER_KEY = 'banner';
+
+// ── Cache helpers ──────────────────────────────────────────────────────────────
 const CACHE_KEY_STICKERS   = 'dd_cache_stickers';
 const CACHE_KEY_CATEGORIES = 'dd_cache_categories';
+const CACHE_KEY_BANNER     = 'dd_cache_banner';
 
 function readCache<T>(key: string): T[] {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : []; }
   catch { return []; }
 }
-function writeCache(key: string, data: unknown[]) {
+function readCacheObj<T>(key: string, fallback: T): T {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function writeCache(key: string, data: unknown) {
   try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
 }
 
+// ── Context shape ──────────────────────────────────────────────────────────────
 interface DataCtx {
   stickers: Sticker[];
   categories: Category[];
+  banner: BannerSettings;
   loading: boolean;
   upsertSticker: (data: Omit<Sticker, 'id'> & { id?: string }) => Promise<void>;
   deleteSticker: (id: string) => Promise<void>;
   upsertCategory: (data: Omit<Category, 'id'> & { id?: string }) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  saveBanner: (b: BannerSettings) => Promise<void>;
   resetDefaults: () => Promise<void>;
 }
 
@@ -33,26 +61,28 @@ export function useData() {
   return ctx;
 }
 
+// ── Provider ───────────────────────────────────────────────────────────────────
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  // ── Seed from cache immediately so the UI is instant on reload ──────────────
   const cachedStickers   = readCache<Sticker>(CACHE_KEY_STICKERS);
   const cachedCategories = readCache<Category>(CACHE_KEY_CATEGORIES);
+  const cachedBanner     = readCacheObj<BannerSettings>(CACHE_KEY_BANNER, DEFAULT_BANNER);
 
   const [stickers,   setStickers]   = useState<Sticker[]>(cachedStickers);
   const [categories, setCategories] = useState<Category[]>(cachedCategories);
-  // Only show a loading state on the very first visit (empty cache)
+  const [banner,     setBanner]     = useState<BannerSettings>(cachedBanner);
   const [loading, setLoading] = useState(cachedStickers.length === 0 && cachedCategories.length === 0);
 
-  // ── Fetch fresh data from Supabase in the background ──────────────────────
+  // ── Initial fetch ────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const [{ data: cats }, { data: stks }] = await Promise.all([
+      const [{ data: cats }, { data: stks }, { data: settings }] = await Promise.all([
         supabase.from('categories').select('*'),
         supabase.from('stickers').select('*'),
+        supabase.from('settings').select('*').eq('key', BANNER_KEY).maybeSingle(),
       ]);
 
+      // Seed stickers/categories if first-ever load
       if (!cats || cats.length === 0) {
-        // First-ever load: seed defaults into Supabase
         await supabase.from('categories').insert(DEFAULT_CATEGORIES);
         await supabase.from('stickers').insert(
           DEFAULT_STICKERS.map(s => ({ ...s, images: s.images ?? [] }))
@@ -69,23 +99,28 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         writeCache(CACHE_KEY_CATEGORIES, freshCats);
         writeCache(CACHE_KEY_STICKERS, freshStks);
       }
+
+      // Load banner settings
+      if (settings?.value) {
+        const b = settings.value as BannerSettings;
+        setBanner(b);
+        writeCache(CACHE_KEY_BANNER, b);
+      }
+
       setLoading(false);
     }
     load();
   }, []);
 
-  // ── Real-time subscriptions ────────────────────────────────────────────────
+  // ── Real-time subscriptions ───────────────────────────────────────────────────
   useEffect(() => {
     const stickersCh = supabase
       .channel('stickers-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stickers' }, ({ eventType, new: n, old: o }) => {
         setStickers(prev => {
-          let next: Sticker[];
-          if (eventType === 'DELETE') {
-            next = prev.filter(s => s.id !== (o as Sticker).id);
-          } else {
-            next = [...prev.filter(s => s.id !== (n as Sticker).id), n as Sticker];
-          }
+          const next = eventType === 'DELETE'
+            ? prev.filter(s => s.id !== (o as Sticker).id)
+            : [...prev.filter(s => s.id !== (n as Sticker).id), n as Sticker];
           writeCache(CACHE_KEY_STICKERS, next);
           return next;
         });
@@ -96,28 +131,36 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       .channel('categories-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, ({ eventType, new: n, old: o }) => {
         setCategories(prev => {
-          let next: Category[];
-          if (eventType === 'DELETE') {
-            next = prev.filter(c => c.id !== (o as Category).id);
-          } else {
-            next = [...prev.filter(c => c.id !== (n as Category).id), n as Category];
-          }
+          const next = eventType === 'DELETE'
+            ? prev.filter(c => c.id !== (o as Category).id)
+            : [...prev.filter(c => c.id !== (n as Category).id), n as Category];
           writeCache(CACHE_KEY_CATEGORIES, next);
           return next;
         });
       })
       .subscribe();
 
+    const settingsCh = supabase
+      .channel('settings-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, ({ new: n }) => {
+        const row = n as { key: string; value: BannerSettings };
+        if (row?.key === BANNER_KEY) {
+          setBanner(row.value);
+          writeCache(CACHE_KEY_BANNER, row.value);
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(stickersCh);
       supabase.removeChannel(categoriesCh);
+      supabase.removeChannel(settingsCh);
     };
   }, []);
 
-  // ── CRUD helpers ───────────────────────────────────────────────────────────
+  // ── CRUD ──────────────────────────────────────────────────────────────────────
   const upsertSticker = useCallback(async (data: Omit<Sticker, 'id'> & { id?: string }) => {
-    const row = { ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] };
-    await supabase.from('stickers').upsert(row);
+    await supabase.from('stickers').upsert({ ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] });
   }, []);
 
   const deleteSticker = useCallback(async (id: string) => {
@@ -125,25 +168,26 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const upsertCategory = useCallback(async (data: Omit<Category, 'id'> & { id?: string }) => {
-    const row = { ...data, id: data.id ?? Date.now().toString() };
-    await supabase.from('categories').upsert(row);
+    await supabase.from('categories').upsert({ ...data, id: data.id ?? Date.now().toString() });
   }, []);
 
   const deleteCategory = useCallback(async (id: string) => {
     await supabase.from('categories').delete().eq('id', id);
   }, []);
 
+  const saveBanner = useCallback(async (b: BannerSettings) => {
+    await supabase.from('settings').upsert({ key: BANNER_KEY, value: b });
+  }, []);
+
   const resetDefaults = useCallback(async () => {
     await supabase.from('stickers').delete().neq('id', '');
     await supabase.from('categories').delete().neq('id', '');
     await supabase.from('categories').insert(DEFAULT_CATEGORIES);
-    await supabase.from('stickers').insert(
-      DEFAULT_STICKERS.map(s => ({ ...s, images: s.images ?? [] }))
-    );
+    await supabase.from('stickers').insert(DEFAULT_STICKERS.map(s => ({ ...s, images: s.images ?? [] })));
   }, []);
 
   return (
-    <DataContext.Provider value={{ stickers, categories, loading, upsertSticker, deleteSticker, upsertCategory, deleteCategory, resetDefaults }}>
+    <DataContext.Provider value={{ stickers, categories, banner, loading, upsertSticker, deleteSticker, upsertCategory, deleteCategory, saveBanner, resetDefaults }}>
       {children}
     </DataContext.Provider>
   );
