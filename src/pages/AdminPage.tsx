@@ -269,13 +269,14 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Navigation: null = category grid, string = category id, 'banner' = banner editor, 'keychains' = keychain manager
+  // Navigation: null = category grid, string = category id, 'banner' = banner editor, 'featured' = featured view
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const [showBannerEditor, setShowBannerEditor] = useState(false);
-  const [showKeychains, setShowKeychains] = useState(false);
+  const [showFeatured, setShowFeatured] = useState(false);
 
-  // Keychain form state
+  // Forms inside category detail
   const [keychainFormData, setKeychainFormData] = useState<(Omit<Keychain, 'id'> & { id?: string }) | null>(null);
+  const [showAddSelector, setShowAddSelector] = useState(false);
 
   // Banner form state
   const [bannerForm, setBannerForm] = useState<BannerSettings>(DEFAULT_BANNER);
@@ -318,6 +319,8 @@ export default function AdminPage() {
   const openCategory = (cat: Category) => {
     setCatForm({ name: cat.name, emoji: cat.emoji, color: cat.color, description: cat.description ?? '' });
     setStickerFormData(null);
+    setKeychainFormData(null);
+    setShowAddSelector(false);
     setActiveCatId(cat.id);
   };
 
@@ -391,12 +394,12 @@ export default function AdminPage() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SHARED HEADER
-  const isSubPage = activeCatId || showBannerEditor || showKeychains;
+  const isSubPage = activeCatId || showBannerEditor || showFeatured;
   const Header = () => (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
         {isSubPage && (
-          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); setShowKeychains(false); }}
+          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); setShowFeatured(false); setShowAddSelector(false); }}
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#2a80b9] transition-colors">
             ← Admin Panel
           </button>
@@ -429,6 +432,8 @@ export default function AdminPage() {
     const cat = categories.find(c => c.id === activeCatId);
     if (!cat) { setActiveCatId(null); return null; }
     const catStickers = stickers.filter(s => s.category_id === activeCatId);
+    const catKeychains = keychains.filter(k => k.collection === cat.name);
+    const totalItems = catStickers.length + catKeychains.length;
 
     return (
       <main className="max-w-4xl mx-auto px-4 py-8">
@@ -441,7 +446,7 @@ export default function AdminPage() {
           </div>
           <div>
             <h2 className="font-display text-2xl text-[#264653]">{cat.name}</h2>
-            <p className="text-xs text-slate-400">{catStickers.length} sticker{catStickers.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-slate-400">{totalItems} item{totalItems !== 1 ? 's' : ''} · {catStickers.length} sticker{catStickers.length !== 1 ? 's' : ''}, {catKeychains.length} keychain{catKeychains.length !== 1 ? 's' : ''}</p>
           </div>
           <button onClick={() => deleteCat(activeCatId)}
             className="ml-auto text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg transition-colors">
@@ -494,48 +499,69 @@ export default function AdminPage() {
           </button>
         </section>
 
-        {/* ── Stickers in this category ── */}
+        {/* ── Items in this category ── */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Stickers</h3>
+            <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Items</h3>
             <button
-              onClick={() => setStickerFormData(emptySticker(activeCatId))}
+              onClick={() => { setStickerFormData(null); setKeychainFormData(null); setShowAddSelector(v => !v); }}
               className="bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-4 py-2 rounded-xl font-semibold text-sm shadow transition-all active:scale-95">
-              + Add Sticker
+              {showAddSelector ? '✕ Cancel' : '+ Add Item'}
             </button>
           </div>
 
-          {/* New sticker form */}
-          {stickerFormData && !stickerFormData.id && (
-            <StickerForm
-              initial={stickerFormData}
-              onSave={saveSticker}
-              onCancel={() => setStickerFormData(null)}
-            />
+          {/* Type selector */}
+          {showAddSelector && (
+            <div className="flex gap-3 mb-4 p-3 bg-white rounded-2xl border border-[#9ED4FB] shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 self-center mr-1">Add a:</p>
+              <button
+                onClick={() => { setStickerFormData(emptySticker(activeCatId)); setShowAddSelector(false); }}
+                className="flex items-center gap-2 flex-1 bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#264653] px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors border border-[#9ED4FB]">
+                🖼️ Sticker
+              </button>
+              <button
+                onClick={() => { setKeychainFormData({ ...emptyKeychain(), collection: cat.name }); setShowAddSelector(false); }}
+                className="flex items-center gap-2 flex-1 bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#264653] px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors border border-[#9ED4FB]">
+                🔑 Keychain
+              </button>
+            </div>
           )}
 
-          {catStickers.length === 0 && !stickerFormData && (
-            <p className="text-slate-400 text-sm italic py-4 text-center">No stickers in this category yet.</p>
+          {/* New sticker form */}
+          {stickerFormData && !stickerFormData.id && (
+            <StickerForm initial={stickerFormData} onSave={saveSticker} onCancel={() => setStickerFormData(null)} />
+          )}
+
+          {/* New keychain form */}
+          {keychainFormData && !keychainFormData.id && (
+            <KeychainForm initial={keychainFormData} onSave={saveKeychain} onCancel={() => setKeychainFormData(null)} />
+          )}
+
+          {totalItems === 0 && !stickerFormData && !keychainFormData && !showAddSelector && (
+            <p className="text-slate-400 text-sm italic py-4 text-center">No items in this category yet.</p>
           )}
 
           <div className="flex flex-col gap-3 mt-3">
+            {/* Stickers */}
             {catStickers.map(s => (
-              <div key={s.id}>
+              <div key={`s-${s.id}`}>
                 <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
                   <img src={s.image} alt={s.name}
                     className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] flex-shrink-0 mix-blend-multiply p-1" />
                   <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">🖼️ Sticker</span>
+                      {s.featured && <span className="text-xs text-yellow-600">⭐</span>}
+                    </div>
                     <p className="font-semibold text-sm text-[#264653] truncate">{s.name}</p>
                     <p className="text-[#2a80b9] text-xs font-bold">${s.price.toFixed(2)}</p>
-                    {s.featured && <span className="text-xs text-yellow-600">⭐ Featured</span>}
-                    {s.description && <p className="text-xs text-slate-400 truncate">{s.description}</p>}
                   </div>
                   {(s.images ?? []).length > 0 && (
                     <span className="text-xs text-slate-400 flex-shrink-0">{(s.images ?? []).length} angle{(s.images ?? []).length !== 1 ? 's' : ''}</span>
                   )}
                   <div className="flex gap-2 flex-shrink-0">
                     <button
-                      onClick={() => setStickerFormData(stickerFormData?.id === s.id ? null : { ...s })}
+                      onClick={() => { setKeychainFormData(null); setStickerFormData(stickerFormData?.id === s.id ? null : { ...s }); }}
                       className="text-xs bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#2a80b9] px-3 py-1.5 rounded-lg font-semibold transition-colors">
                       {stickerFormData?.id === s.id ? 'Close' : 'Edit'}
                     </button>
@@ -545,14 +571,43 @@ export default function AdminPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Inline edit form for this sticker */}
                 {stickerFormData?.id === s.id && (
-                  <StickerForm
-                    initial={stickerFormData}
-                    onSave={saveSticker}
-                    onCancel={() => setStickerFormData(null)}
-                  />
+                  <StickerForm initial={stickerFormData} onSave={saveSticker} onCancel={() => setStickerFormData(null)} />
+                )}
+              </div>
+            ))}
+
+            {/* Keychains */}
+            {catKeychains.map(k => (
+              <div key={`k-${k.id}`}>
+                <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
+                  <img src={k.image} alt={k.name}
+                    className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] flex-shrink-0 mix-blend-multiply p-1" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-xs bg-blue-50 text-[#2a80b9] px-1.5 py-0.5 rounded font-medium">🔑 Keychain</span>
+                      {k.featured && <span className="text-xs text-yellow-600">⭐</span>}
+                    </div>
+                    <p className="font-semibold text-sm text-[#264653] truncate">{k.name}</p>
+                    <p className="text-[#2a80b9] text-xs font-bold">${k.price.toFixed(2)}</p>
+                  </div>
+                  {(k.images ?? []).length > 0 && (
+                    <span className="text-xs text-slate-400 flex-shrink-0">{(k.images ?? []).length} angle{(k.images ?? []).length !== 1 ? 's' : ''}</span>
+                  )}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => { setStickerFormData(null); setKeychainFormData(keychainFormData?.id === k.id ? null : { ...k }); }}
+                      className="text-xs bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#2a80b9] px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                      {keychainFormData?.id === k.id ? 'Close' : 'Edit'}
+                    </button>
+                    <button onClick={() => deleteKeychain(k.id)}
+                      className="text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {keychainFormData?.id === k.id && (
+                  <KeychainForm initial={keychainFormData} onSave={saveKeychain} onCancel={() => setKeychainFormData(null)} />
                 )}
               </div>
             ))}
@@ -563,78 +618,87 @@ export default function AdminPage() {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // KEYCHAINS VIEW
-  if (showKeychains) return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <Header />
+  // FEATURED VIEW
+  if (showFeatured) {
+    const featuredStickers = stickers.filter(s => s.featured);
+    const featuredKeychains = keychains.filter(k => k.featured);
+    const totalFeatured = featuredStickers.length + featuredKeychains.length;
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9ED4FB] to-[#2a80b9] flex items-center justify-center text-xl shadow">🔑</div>
-        <div>
-          <h2 className="font-display text-2xl text-[#264653]">Keychains</h2>
-          <p className="text-xs text-slate-400">{keychains.length} keychain{keychains.length !== 1 ? 's' : ''}</p>
-        </div>
-        <button
-          onClick={() => setKeychainFormData(keychainFormData && !keychainFormData.id ? null : emptyKeychain())}
-          className="ml-auto bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-4 py-2 rounded-xl font-semibold text-sm shadow transition-all active:scale-95">
-          + Add Keychain
-        </button>
-      </div>
+    const unfeatureSticker = async (s: Sticker) => upsertSticker({ ...s, featured: false });
+    const unfeatureKeychain = async (k: Keychain) => upsertKeychain({ ...k, featured: false });
 
-      {/* New keychain form */}
-      {keychainFormData && !keychainFormData.id && (
-        <KeychainForm
-          initial={keychainFormData}
-          onSave={saveKeychain}
-          onCancel={() => setKeychainFormData(null)}
-        />
-      )}
+    return (
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <Header />
 
-      {keychains.length === 0 && !keychainFormData && (
-        <p className="text-slate-400 text-sm italic py-8 text-center">No keychains yet. Click + Add Keychain to get started.</p>
-      )}
-
-      <div className="flex flex-col gap-3 mt-4">
-        {keychains.map(k => (
-          <div key={k.id}>
-            <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
-              <img src={k.image} alt={k.name}
-                className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] flex-shrink-0 mix-blend-multiply p-1" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-[#264653] truncate">{k.name}</p>
-                <p className="text-[#2a80b9] text-xs font-bold">${k.price.toFixed(2)}</p>
-                {k.featured && <span className="text-xs text-yellow-600">⭐ Featured</span>}
-                {k.collection && <p className="text-xs text-slate-400 truncate">🔑 {k.collection}</p>}
-              </div>
-              {(k.images ?? []).length > 0 && (
-                <span className="text-xs text-slate-400 flex-shrink-0">{(k.images ?? []).length} angle{(k.images ?? []).length !== 1 ? 's' : ''}</span>
-              )}
-              <div className="flex gap-2 flex-shrink-0">
-                <button
-                  onClick={() => setKeychainFormData(keychainFormData?.id === k.id ? null : { ...k })}
-                  className="text-xs bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#2a80b9] px-3 py-1.5 rounded-lg font-semibold transition-colors">
-                  {keychainFormData?.id === k.id ? 'Close' : 'Edit'}
-                </button>
-                <button onClick={() => deleteKeychain(k.id)}
-                  className="text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg font-semibold transition-colors">
-                  Delete
-                </button>
-              </div>
-            </div>
-
-            {/* Inline edit form */}
-            {keychainFormData?.id === k.id && (
-              <KeychainForm
-                initial={keychainFormData}
-                onSave={saveKeychain}
-                onCancel={() => setKeychainFormData(null)}
-              />
-            )}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-xl shadow">⭐</div>
+          <div>
+            <h2 className="font-display text-2xl text-[#264653]">Featured Items</h2>
+            <p className="text-xs text-slate-400">{totalFeatured} featured item{totalFeatured !== 1 ? 's' : ''} · {featuredStickers.length} sticker{featuredStickers.length !== 1 ? 's' : ''}, {featuredKeychains.length} keychain{featuredKeychains.length !== 1 ? 's' : ''}</p>
           </div>
-        ))}
-      </div>
-    </main>
-  );
+        </div>
+
+        {totalFeatured === 0 ? (
+          <p className="text-slate-400 text-sm italic py-8 text-center">No featured items yet. Mark stickers or keychains as ⭐ Featured when editing them.</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {featuredStickers.map(s => {
+              const cat = categories.find(c => c.id === s.category_id);
+              return (
+                <div key={`fs-${s.id}`} className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
+                  <img src={s.image} alt={s.name}
+                    className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] flex-shrink-0 mix-blend-multiply p-1" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">🖼️ Sticker</span>
+                      {cat && <span className="text-xs text-slate-400">{cat.emoji} {cat.name}</span>}
+                    </div>
+                    <p className="font-semibold text-sm text-[#264653] truncate">{s.name}</p>
+                    <p className="text-[#2a80b9] text-xs font-bold">${s.price.toFixed(2)}</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => unfeatureSticker(s)}
+                      className="text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                      ★ Unfeature
+                    </button>
+                    <button onClick={() => deleteSticker(s.id)}
+                      className="text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {featuredKeychains.map(k => (
+              <div key={`fk-${k.id}`} className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
+                <img src={k.image} alt={k.name}
+                  className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] flex-shrink-0 mix-blend-multiply p-1" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-xs bg-blue-50 text-[#2a80b9] px-1.5 py-0.5 rounded font-medium">🔑 Keychain</span>
+                    {k.collection && <span className="text-xs text-slate-400">{k.collection}</span>}
+                  </div>
+                  <p className="font-semibold text-sm text-[#264653] truncate">{k.name}</p>
+                  <p className="text-[#2a80b9] text-xs font-bold">${k.price.toFixed(2)}</p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button onClick={() => unfeatureKeychain(k)}
+                    className="text-xs bg-yellow-50 hover:bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                    ★ Unfeature
+                  </button>
+                  <button onClick={() => deleteKeychain(k.id)}
+                    className="text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // BANNER EDITOR VIEW
@@ -811,26 +875,33 @@ export default function AdminPage() {
         </div>
       </button>
 
-      {/* Keychains card */}
-      <button
-        onClick={() => { setKeychainFormData(null); setShowKeychains(true); }}
-        className="group w-full bg-gradient-to-r from-[#9ED4FB]/40 to-[#DEF1FF] rounded-2xl border border-[#9ED4FB] hover:shadow-md text-left transition-all hover:-translate-y-0.5 active:scale-[0.99] mb-4 overflow-hidden"
-      >
-        <div className="h-1.5 bg-gradient-to-r from-[#2a80b9] to-[#9ED4FB]" />
-        <div className="p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2a80b9] to-[#9ED4FB] flex items-center justify-center text-2xl shadow flex-shrink-0">🔑</div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-[#264653] group-hover:text-[#2a80b9] transition-colors">Keychains</p>
-            <p className="text-xs text-slate-400 mt-0.5">{keychains.length} keychain{keychains.length !== 1 ? 's' : ''}</p>
-          </div>
-          <span className="text-slate-300 group-hover:text-[#2a80b9] text-xl transition-colors flex-shrink-0">›</span>
-        </div>
-      </button>
+      {/* Featured card */}
+      {(() => {
+        const totalFeatured = stickers.filter(s => s.featured).length + keychains.filter(k => k.featured).length;
+        return (
+          <button
+            onClick={() => setShowFeatured(true)}
+            className="group w-full bg-gradient-to-r from-yellow-50 to-amber-50 rounded-2xl border border-yellow-200 hover:shadow-md text-left transition-all hover:-translate-y-0.5 active:scale-[0.99] mb-4 overflow-hidden"
+          >
+            <div className="h-1.5 bg-gradient-to-r from-yellow-400 to-amber-500" />
+            <div className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center text-2xl shadow flex-shrink-0">⭐</div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[#264653] group-hover:text-amber-600 transition-colors">Featured Items</p>
+                <p className="text-xs text-slate-400 mt-0.5">{totalFeatured} item{totalFeatured !== 1 ? 's' : ''} featured across stickers &amp; keychains</p>
+              </div>
+              <span className="text-slate-300 group-hover:text-amber-500 text-xl transition-colors flex-shrink-0">›</span>
+            </div>
+          </button>
+        );
+      })()}
 
       {/* Category grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {categories.map(cat => {
-          const count = stickers.filter(s => s.category_id === cat.id).length;
+          const stickerCount = stickers.filter(s => s.category_id === cat.id).length;
+          const keychainCount = keychains.filter(k => k.collection === cat.name).length;
+          const count = stickerCount + keychainCount;
           return (
             <button
               key={cat.id}
@@ -844,7 +915,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-[#264653] truncate group-hover:text-[#2a80b9] transition-colors">{cat.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{count} sticker{count !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{count} item{count !== 1 ? 's' : ''}{keychainCount > 0 ? ` · ${keychainCount} 🔑` : ''}</p>
                   {cat.description && <p className="text-xs text-slate-400 truncate mt-0.5">{cat.description}</p>}
                 </div>
                 <span className="text-slate-300 group-hover:text-[#2a80b9] text-xl transition-colors flex-shrink-0">›</span>

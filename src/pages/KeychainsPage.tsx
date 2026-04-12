@@ -22,7 +22,7 @@ export default function KeychainsPage() {
 
   const collections = Array.from(new Set(keychains.map(k => k.collection).filter(Boolean))) as string[];
   const filtered = activeCollection ? keychains.filter(k => k.collection === activeCollection) : keychains;
-  const featured = keychains.filter(k => k.featured);
+  const featured = filtered.filter(k => k.featured);
 
   return (
     <main>
