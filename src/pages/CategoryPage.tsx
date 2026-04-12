@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import StickerCard from '../components/StickerCard';
+import KeychainCard from '../components/KeychainCard';
 import { useInView } from '../hooks/useInView';
 
 function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -18,9 +19,14 @@ function ScrollReveal({ children, delay = 0 }: { children: React.ReactNode; dela
 
 export default function CategoryPage() {
   const { id } = useParams();
-  const { stickers, categories } = useData();
+  const { stickers, categories, keychains } = useData();
   const category = categories.find(c => c.id === id);
+  const isKeychain = category?.type === 'keychain';
+
   const catStickers = stickers.filter(s => s.category_id === id);
+  const catKeychains = keychains.filter(k => k.collection === id || k.collection === category?.name);
+  const itemCount = isKeychain ? catKeychains.length : catStickers.length;
+  const itemLabel = isKeychain ? 'keychain' : 'sticker';
 
   if (!category) return (
     <div className="text-center py-24">
@@ -32,8 +38,8 @@ export default function CategoryPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">
-      <Link to="/" className="inline-flex items-center gap-1 text-sm mb-6 transition-colors" style={{ color: '#2a80b9' }}>
-        ← Back to all categories
+      <Link to={isKeychain ? '/keychains' : '/'} className="inline-flex items-center gap-1 text-sm mb-6 transition-colors" style={{ color: '#2a80b9' }}>
+        ← {isKeychain ? 'All keychain collections' : 'All categories'}
       </Link>
 
       {/* Category hero */}
@@ -45,22 +51,37 @@ export default function CategoryPage() {
             <span className="text-5xl mb-3 block animate-float">{category.emoji}</span>
             <h1 className="font-display text-3xl md:text-4xl mb-2">{category.name}</h1>
             {category.description && <p className="text-white/80 text-base">{category.description}</p>}
-            <p className="text-white/60 text-sm mt-2">{catStickers.length} sticker{catStickers.length !== 1 ? 's' : ''}</p>
+            <p className="text-white/60 text-sm mt-2">{itemCount} {itemLabel}{itemCount !== 1 ? 's' : ''}</p>
           </div>
         </div>
       </ScrollReveal>
 
-      {catStickers.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-4xl mb-3">🦆</p>
-          <p className="text-slate-500">No stickers in this category yet.</p>
-        </div>
+      {isKeychain ? (
+        catKeychains.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-4xl mb-3">🔑</p>
+            <p className="text-slate-500">No keychains in this collection yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {catKeychains.map((k, i) => (
+              <KeychainCard key={k.id} keychain={k} index={i} />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {catStickers.map((s, i) => (
-            <StickerCard key={s.id} sticker={s} index={i} />
-          ))}
-        </div>
+        catStickers.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-4xl mb-3">🦆</p>
+            <p className="text-slate-500">No stickers in this category yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {catStickers.map((s, i) => (
+              <StickerCard key={s.id} sticker={s} index={i} />
+            ))}
+          </div>
+        )
       )}
     </main>
   );

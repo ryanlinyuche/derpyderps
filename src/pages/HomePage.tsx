@@ -1,9 +1,7 @@
-import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import FeaturedCarousel from '../components/FeaturedCarousel';
 import CategoryCard from '../components/CategoryCard';
 import StickerMarquee from '../components/StickerMarquee';
-import KeychainCard from '../components/KeychainCard';
 import { useInView } from '../hooks/useInView';
 
 function ScrollReveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -24,11 +22,11 @@ function ScrollReveal({ children, delay = 0, className = '' }: { children: React
 }
 
 export default function HomePage() {
-  const navigate = useNavigate();
-  const { stickers, categories, banner, keychains } = useData();
+  const { stickers, categories, keychains, banner } = useData();
   const featured = stickers.filter(s => s.featured);
-  const featuredKeychains = keychains.filter(k => k.featured).slice(0, 4);
-  const previewKeychains = featuredKeychains.length > 0 ? featuredKeychains : keychains.slice(0, 4);
+
+  const stickerCategories = categories.filter(c => !c.type || c.type === 'sticker');
+  const keychainCategories = categories.filter(c => c.type === 'keychain');
 
   return (
     <main>
@@ -76,49 +74,51 @@ export default function HomePage() {
         </ScrollReveal>
       )}
 
-      {/* ── Keychains teaser ── */}
-      {previewKeychains.length > 0 && (
-        <ScrollReveal className="max-w-6xl mx-auto px-4 pt-10 pb-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🔑</span>
-              <h2 className="font-display text-2xl" style={{ color: '#264653' }}>Keychains</h2>
+      {/* ── Sticker Categories ── */}
+      {stickerCategories.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 pt-6 pb-10">
+          <ScrollReveal>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🖼️</span>
+              <h2 className="font-display text-2xl" style={{ color: '#264653' }}>Sticker Collections</h2>
             </div>
-            <button
-              onClick={() => navigate('/keychains')}
-              className="text-sm font-semibold text-[#2a80b9] hover:underline"
-            >
-              View all →
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {previewKeychains.map((k, i) => (
-              <KeychainCard key={k.id} keychain={k} index={i} />
+            <p className="text-sm mb-6 text-slate-500">Click on a collection to explore all stickers</p>
+          </ScrollReveal>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stickerCategories.map((cat, i) => (
+              <CategoryCard
+                key={cat.id}
+                category={cat}
+                items={stickers.filter(s => s.category_id === cat.id)}
+                index={i}
+              />
             ))}
           </div>
-        </ScrollReveal>
+        </section>
       )}
 
-      {/* ── Categories ── */}
-      <section className="max-w-6xl mx-auto px-4 pb-16">
-        <ScrollReveal>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-2xl">🗂️</span>
-            <h2 className="font-display text-2xl" style={{ color: '#264653' }}>Browse Categories</h2>
+      {/* ── Keychain Categories ── */}
+      {keychainCategories.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4 pt-2 pb-16">
+          <ScrollReveal>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🔑</span>
+              <h2 className="font-display text-2xl" style={{ color: '#264653' }}>Keychain Collections</h2>
+            </div>
+            <p className="text-sm mb-6 text-slate-500">Click on a collection to explore all keychains</p>
+          </ScrollReveal>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {keychainCategories.map((cat, i) => (
+              <CategoryCard
+                key={cat.id}
+                category={cat}
+                items={keychains.filter(k => k.collection === cat.id || k.collection === cat.name)}
+                index={i}
+              />
+            ))}
           </div>
-          <p className="text-sm mb-6 text-slate-500">Click on a category to explore all stickers</p>
-        </ScrollReveal>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((cat, i) => (
-            <CategoryCard
-              key={cat.id}
-              category={cat}
-              stickers={stickers.filter(s => s.category_id === cat.id)}
-              index={i}
-            />
-          ))}
-        </div>
-      </section>
+        </section>
+      )}
     </main>
   );
 }

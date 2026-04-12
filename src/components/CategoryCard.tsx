@@ -1,18 +1,21 @@
 import { Link } from 'react-router-dom';
-import type { Category, Sticker } from '../data/stickers';
+import type { Category } from '../data/stickers';
 import { useInView } from '../hooks/useInView';
+
+interface Item { id: string; image: string; name: string; }
 
 interface Props {
   category: Category;
-  stickers: Sticker[];
+  items: Item[];
   index?: number;
 }
 
-export default function CategoryCard({ category, stickers, index = 0 }: Props) {
-  const preview = stickers.slice(0, 3);
-  const extra = stickers.length > 3 ? stickers.length - 3 : 0;
+export default function CategoryCard({ category, items, index = 0 }: Props) {
+  const preview = items.slice(0, 3);
+  const extra = items.length > 3 ? items.length - 3 : 0;
   const { ref, inView } = useInView(0.12);
   const delay = (index % 3) * 100;
+  const label = category.type === 'keychain' ? 'keychain' : 'sticker';
 
   return (
     <div ref={ref} style={{
@@ -36,18 +39,18 @@ export default function CategoryCard({ category, stickers, index = 0 }: Props) {
               <h3 className="font-display text-lg transition-colors leading-tight group-hover:opacity-75" style={{ color: '#264653' }}>
                 {category.name}
               </h3>
-              <p className="text-sm text-slate-400 mt-0.5">{stickers.length} sticker{stickers.length !== 1 ? 's' : ''}</p>
+              <p className="text-sm text-slate-400 mt-0.5">{items.length} {label}{items.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
-            {preview.map((s, i) => (
+            {preview.map((item, i) => (
               <div
-                key={s.id}
+                key={item.id}
                 className="w-14 h-14 rounded-full border-2 border-white shadow-sm flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:scale-105 transition-transform duration-300"
                 style={{ background: '#DEF1FF', transitionDelay: `${i * 40}ms` }}
               >
-                <img src={s.image} alt={s.name} className="max-w-full max-h-full object-contain p-1 mix-blend-multiply" />
+                <img src={item.image} alt={item.name} className="max-w-full max-h-full object-contain p-1 mix-blend-multiply" />
               </div>
             ))}
             {extra > 0 && (

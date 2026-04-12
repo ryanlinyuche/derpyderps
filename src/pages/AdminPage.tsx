@@ -27,7 +27,7 @@ const emptyKeychain = (): Omit<Keychain, 'id'> => ({
 });
 
 const emptyCategory = (): Omit<Category, 'id'> => ({
-  name: '', emoji: '🦆', color: 'from-blue-400 to-cyan-500', description: ''
+  name: '', emoji: '🦆', color: 'from-blue-400 to-cyan-500', description: '', type: 'sticker'
 });
 
 // ─── Shared image upload widget ───────────────────────────────────────────────
@@ -279,7 +279,6 @@ export default function AdminPage() {
 
   // Forms inside category detail
   const [keychainFormData, setKeychainFormData] = useState<(Omit<Keychain, 'id'> & { id?: string }) | null>(null);
-  const [showAddSelector, setShowAddSelector] = useState(false);
 
   // Banner form state
   const [bannerForm, setBannerForm] = useState<BannerSettings>(DEFAULT_BANNER);
@@ -320,10 +319,9 @@ export default function AdminPage() {
 
   // ── Category actions ──
   const openCategory = (cat: Category) => {
-    setCatForm({ name: cat.name, emoji: cat.emoji, color: cat.color, description: cat.description ?? '' });
+    setCatForm({ name: cat.name, emoji: cat.emoji, color: cat.color, description: cat.description ?? '', type: cat.type ?? 'sticker' });
     setStickerFormData(null);
     setKeychainFormData(null);
-    setShowAddSelector(false);
     setActiveCatId(cat.id);
   };
 
@@ -402,7 +400,7 @@ export default function AdminPage() {
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
         {isSubPage && (
-          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); setShowFeatured(false); setShowAddSelector(false); }}
+          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); setShowFeatured(false); }}
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#2a80b9] transition-colors">
             ← Admin Panel
           </button>
@@ -434,9 +432,10 @@ export default function AdminPage() {
   if (activeCatId) {
     const cat = categories.find(c => c.id === activeCatId);
     if (!cat) { setActiveCatId(null); return null; }
+    const isKeychainCat = cat.type === 'keychain';
     const catStickers = stickers.filter(s => s.category_id === activeCatId);
-    const catKeychains = keychains.filter(k => k.collection === cat.name);
-    const totalItems = catStickers.length + catKeychains.length;
+    const catKeychains = keychains.filter(k => k.collection === cat.id || k.collection === cat.name);
+    const totalItems = isKeychainCat ? catKeychains.length : catStickers.length;
 
     return (
       <main className="max-w-4xl mx-auto px-4 py-8">
@@ -449,7 +448,7 @@ export default function AdminPage() {
           </div>
           <div>
             <h2 className="font-display text-2xl text-[#264653]">{cat.name}</h2>
-            <p className="text-xs text-slate-400">{totalItems} item{totalItems !== 1 ? 's' : ''} · {catStickers.length} sticker{catStickers.length !== 1 ? 's' : ''}, {catKeychains.length} keychain{catKeychains.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-slate-400">{totalItems} {isKeychainCat ? 'keychain' : 'sticker'}{totalItems !== 1 ? 's' : ''}</p>
           </div>
           <button onClick={() => deleteCat(activeCatId)}
             className="ml-auto text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg transition-colors">
@@ -495,6 +494,17 @@ export default function AdminPage() {
               <input className="input-field" placeholder="Optional description" value={catForm.description ?? ''}
                 onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} />
             </div>
+            <div className="sm:col-span-2">
+              <label className="text-xs font-semibold text-slate-500 mb-2 block">Category Type</label>
+              <div className="flex gap-2">
+                {(['sticker', 'keychain'] as const).map(t => (
+                  <button key={t} onClick={() => setCatForm(f => ({ ...f, type: t }))}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${(catForm.type ?? 'sticker') === t ? 'bg-[#2a80b9] text-white border-[#2a80b9]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#9ED4FB]'}`}>
+                    {t === 'sticker' ? '🖼️ Stickers' : '🔑 Keychains'}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <button onClick={saveCatEdits}
             className="mt-4 bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95">
@@ -505,53 +515,50 @@ export default function AdminPage() {
         {/* ── Items in this category ── */}
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Items</h3>
+            <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">
+              {isKeychainCat ? 'Keychains' : 'Stickers'}
+            </h3>
             <button
-              onClick={() => { setStickerFormData(null); setKeychainFormData(null); setShowAddSelector(v => !v); }}
+              onClick={() => {
+                if (isKeychainCat) {
+                  setKeychainFormData(keychainFormData && !keychainFormData.id ? null : { ...emptyKeychain(), collection: cat.id });
+                  setStickerFormData(null);
+                } else {
+                  setStickerFormData(stickerFormData && !stickerFormData.id ? null : emptySticker(activeCatId));
+                  setKeychainFormData(null);
+                }
+              }}
               className="bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-4 py-2 rounded-xl font-semibold text-sm shadow transition-all active:scale-95">
-              {showAddSelector ? '✕ Cancel' : '+ Add Item'}
+              {isKeychainCat
+                ? (keychainFormData && !keychainFormData.id ? '✕ Cancel' : '+ Add Keychain')
+                : (stickerFormData && !stickerFormData.id ? '✕ Cancel' : '+ Add Sticker')}
             </button>
           </div>
 
-          {/* Type selector */}
-          {showAddSelector && (
-            <div className="flex gap-3 mb-4 p-3 bg-white rounded-2xl border border-[#9ED4FB] shadow-sm">
-              <p className="text-xs font-semibold text-slate-500 self-center mr-1">Add a:</p>
-              <button
-                onClick={() => { setStickerFormData(emptySticker(activeCatId)); setShowAddSelector(false); }}
-                className="flex items-center gap-2 flex-1 bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#264653] px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors border border-[#9ED4FB]">
-                🖼️ Sticker
-              </button>
-              <button
-                onClick={() => { setKeychainFormData({ ...emptyKeychain(), collection: cat.name }); setShowAddSelector(false); }}
-                className="flex items-center gap-2 flex-1 bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#264653] px-4 py-2.5 rounded-xl font-semibold text-sm transition-colors border border-[#9ED4FB]">
-                🔑 Keychain
-              </button>
-            </div>
-          )}
-
           {/* New sticker form */}
-          {stickerFormData && !stickerFormData.id && (
+          {!isKeychainCat && stickerFormData && !stickerFormData.id && (
             <StickerForm initial={stickerFormData} onSave={saveSticker} onCancel={() => setStickerFormData(null)} />
           )}
 
           {/* New keychain form */}
-          {keychainFormData && !keychainFormData.id && (
+          {isKeychainCat && keychainFormData && !keychainFormData.id && (
             <KeychainForm
               initial={keychainFormData}
-              onSave={data => saveKeychain({ ...data, collection: cat.name })}
+              onSave={data => saveKeychain({ ...data, collection: cat.id })}
               onCancel={() => setKeychainFormData(null)}
               hideCollection
             />
           )}
 
-          {totalItems === 0 && !stickerFormData && !keychainFormData && !showAddSelector && (
-            <p className="text-slate-400 text-sm italic py-4 text-center">No items in this category yet.</p>
+          {totalItems === 0 && !stickerFormData && !keychainFormData && (
+            <p className="text-slate-400 text-sm italic py-4 text-center">
+              No {isKeychainCat ? 'keychains' : 'stickers'} in this {isKeychainCat ? 'collection' : 'category'} yet.
+            </p>
           )}
 
           <div className="flex flex-col gap-3 mt-3">
-            {/* Stickers */}
-            {catStickers.map(s => (
+            {/* Stickers (only for sticker categories) */}
+            {!isKeychainCat && catStickers.map(s => (
               <div key={`s-${s.id}`}>
                 <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
                   <img src={s.image} alt={s.name}
@@ -585,8 +592,8 @@ export default function AdminPage() {
               </div>
             ))}
 
-            {/* Keychains */}
-            {catKeychains.map(k => (
+            {/* Keychains (only for keychain categories) */}
+            {isKeychainCat && catKeychains.map(k => (
               <div key={`k-${k.id}`}>
                 <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
                   <img src={k.image} alt={k.name}
@@ -617,7 +624,7 @@ export default function AdminPage() {
                 {keychainFormData?.id === k.id && (
                   <KeychainForm
                     initial={keychainFormData}
-                    onSave={data => saveKeychain({ ...data, collection: cat.name })}
+                    onSave={data => saveKeychain({ ...data, collection: cat.id })}
                     onCancel={() => setKeychainFormData(null)}
                     hideCollection
                   />
@@ -872,6 +879,17 @@ export default function AdminPage() {
               <input className="input-field" placeholder="Optional description" value={catForm.description ?? ''}
                 onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} />
             </div>
+            <div className="sm:col-span-2">
+              <label className="text-xs font-semibold text-slate-500 mb-2 block">Category Type</label>
+              <div className="flex gap-2">
+                {(['sticker', 'keychain'] as const).map(t => (
+                  <button key={t} onClick={() => setCatForm(f => ({ ...f, type: t }))}
+                    className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${(catForm.type ?? 'sticker') === t ? 'bg-[#2a80b9] text-white border-[#2a80b9]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#9ED4FB]'}`}>
+                    {t === 'sticker' ? '🖼️ Stickers' : '🔑 Keychains'}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <button onClick={saveNewCat}
@@ -926,9 +944,10 @@ export default function AdminPage() {
       {/* Category grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {categories.map(cat => {
-          const stickerCount = stickers.filter(s => s.category_id === cat.id).length;
-          const keychainCount = keychains.filter(k => k.collection === cat.name).length;
-          const count = stickerCount + keychainCount;
+          const isKc = cat.type === 'keychain';
+          const count = isKc
+            ? keychains.filter(k => k.collection === cat.id || k.collection === cat.name).length
+            : stickers.filter(s => s.category_id === cat.id).length;
           return (
             <button
               key={cat.id}
@@ -942,7 +961,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-[#264653] truncate group-hover:text-[#2a80b9] transition-colors">{cat.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{count} item{count !== 1 ? 's' : ''}{keychainCount > 0 ? ` · ${keychainCount} 🔑` : ''}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{count} {isKc ? 'keychain' : 'sticker'}{count !== 1 ? 's' : ''} {isKc ? '🔑' : '🖼️'}</p>
                   {cat.description && <p className="text-xs text-slate-400 truncate mt-0.5">{cat.description}</p>}
                 </div>
                 <span className="text-slate-300 group-hover:text-[#2a80b9] text-xl transition-colors flex-shrink-0">›</span>

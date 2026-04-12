@@ -35,6 +35,7 @@ export interface Category {
   description?: string;
   emoji: string;
   color: string;
+  type?: 'sticker' | 'keychain';
 }
 
 const SB = 'https://zkhhlnikjdwkjtzjsgme.supabase.co/storage/v1/object/public/sticker-images';
