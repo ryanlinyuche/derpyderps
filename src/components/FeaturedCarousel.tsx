@@ -71,16 +71,6 @@ export default function FeaturedCarousel({ stickers }: Props) {
             </div>
           </div>
 
-          {/* Dots */}
-          <div className="absolute bottom-3 right-6 flex gap-2">
-            {stickers.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goTo(i)}
-                className={`rounded-full transition-all ${i === current ? 'bg-white w-5 h-2' : 'bg-white/40 w-2 h-2'}`}
-              />
-            ))}
-          </div>
         </div>
 
         <button

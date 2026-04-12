@@ -33,7 +33,14 @@ export default function HomePage() {
   return (
     <main>
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden" style={{ background: '#9ED4FB' }}>
+      <section className="relative overflow-hidden" style={{
+        background: '#9ED4FB',
+        ...(banner.backgroundImage ? {
+          backgroundImage: `url(${banner.backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : {}),
+      }}>
         <div className="absolute top-6 right-12 w-40 h-40 rounded-full blur-3xl animate-float-slow pointer-events-none" style={{ background: '#2a80b9', opacity: 0.2 }} />
         <div className="absolute bottom-4 left-16 w-28 h-28 rounded-full blur-2xl animate-float-delay pointer-events-none" style={{ background: '#2a80b9', opacity: 0.15 }} />
 

@@ -169,11 +169,12 @@ function StickerForm({
 
 // ─── Keychain form ────────────────────────────────────────────────────────────
 function KeychainForm({
-  initial, onSave, onCancel,
+  initial, onSave, onCancel, hideCollection = false,
 }: {
   initial: Omit<Keychain, 'id'> & { id?: string };
   onSave: (data: Omit<Keychain, 'id'> & { id?: string }) => void;
   onCancel: () => void;
+  hideCollection?: boolean;
 }) {
   const [form, setForm] = useState(initial);
 
@@ -190,11 +191,13 @@ function KeychainForm({
           <input className="input-field" type="number" step="0.01" min="0" value={form.price}
             onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) }))} />
         </div>
-        <div>
-          <label className="text-xs font-semibold text-slate-500 mb-1 block">Collection (optional)</label>
-          <input className="input-field" placeholder="e.g. Duck Series" value={form.collection ?? ''}
-            onChange={e => setForm(f => ({ ...f, collection: e.target.value }))} />
-        </div>
+        {!hideCollection && (
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Collection (optional)</label>
+            <input className="input-field" placeholder="e.g. Duck Series" value={form.collection ?? ''}
+              onChange={e => setForm(f => ({ ...f, collection: e.target.value }))} />
+          </div>
+        )}
         <div className="sm:col-span-2">
           <ImageUpload value={form.image} onChange={v => setForm(f => ({ ...f, image: v }))} />
         </div>
@@ -534,7 +537,12 @@ export default function AdminPage() {
 
           {/* New keychain form */}
           {keychainFormData && !keychainFormData.id && (
-            <KeychainForm initial={keychainFormData} onSave={saveKeychain} onCancel={() => setKeychainFormData(null)} />
+            <KeychainForm
+              initial={keychainFormData}
+              onSave={data => saveKeychain({ ...data, collection: cat.name })}
+              onCancel={() => setKeychainFormData(null)}
+              hideCollection
+            />
           )}
 
           {totalItems === 0 && !stickerFormData && !keychainFormData && !showAddSelector && (
@@ -607,7 +615,12 @@ export default function AdminPage() {
                   </div>
                 </div>
                 {keychainFormData?.id === k.id && (
-                  <KeychainForm initial={keychainFormData} onSave={saveKeychain} onCancel={() => setKeychainFormData(null)} />
+                  <KeychainForm
+                    initial={keychainFormData}
+                    onSave={data => saveKeychain({ ...data, collection: cat.name })}
+                    onCancel={() => setKeychainFormData(null)}
+                    hideCollection
+                  />
                 )}
               </div>
             ))}
@@ -750,6 +763,20 @@ export default function AdminPage() {
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Subtitle</label>
             <textarea className="input-field resize-none" rows={2} value={bannerForm.subtitle}
               onChange={e => setBannerForm(f => ({ ...f, subtitle: e.target.value }))} />
+          </div>
+          <div className="sm:col-span-2">
+            <ImageUpload
+              value={bannerForm.backgroundImage ?? ''}
+              onChange={v => setBannerForm(f => ({ ...f, backgroundImage: v || undefined }))}
+              label="Background Image (optional)"
+            />
+            {bannerForm.backgroundImage && (
+              <button
+                onClick={() => setBannerForm(f => ({ ...f, backgroundImage: undefined }))}
+                className="mt-1.5 text-xs text-red-400 hover:text-red-600 transition-colors">
+                × Remove background image
+              </button>
+            )}
           </div>
         </div>
 

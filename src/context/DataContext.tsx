@@ -10,6 +10,7 @@ export interface BannerSettings {
   emoji: string;
   subtitle: string;
   tags: string[];
+  backgroundImage?: string;
 }
 
 export const DEFAULT_BANNER: BannerSettings = {
