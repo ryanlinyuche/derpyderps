@@ -184,28 +184,37 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────────
+  // ── CRUD (optimistic: update local state immediately, real-time handles other devices) ──
   const upsertSticker = useCallback(async (data: Omit<Sticker, 'id'> & { id?: string }) => {
-    await supabase.from('stickers').upsert({ ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] });
+    const item = { ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] } as Sticker;
+    setStickers(prev => { const next = [...prev.filter(s => s.id !== item.id), item]; writeCache(CACHE_KEY_STICKERS, next); return next; });
+    await supabase.from('stickers').upsert(item);
   }, []);
 
   const deleteSticker = useCallback(async (id: string) => {
+    setStickers(prev => { const next = prev.filter(s => s.id !== id); writeCache(CACHE_KEY_STICKERS, next); return next; });
     await supabase.from('stickers').delete().eq('id', id);
   }, []);
 
   const upsertCategory = useCallback(async (data: Omit<Category, 'id'> & { id?: string }) => {
-    await supabase.from('categories').upsert({ ...data, id: data.id ?? Date.now().toString() });
+    const item = { ...data, id: data.id ?? Date.now().toString() } as Category;
+    setCategories(prev => { const next = [...prev.filter(c => c.id !== item.id), item]; writeCache(CACHE_KEY_CATEGORIES, next); return next; });
+    await supabase.from('categories').upsert(item);
   }, []);
 
   const deleteCategory = useCallback(async (id: string) => {
+    setCategories(prev => { const next = prev.filter(c => c.id !== id); writeCache(CACHE_KEY_CATEGORIES, next); return next; });
     await supabase.from('categories').delete().eq('id', id);
   }, []);
 
   const upsertKeychain = useCallback(async (data: Omit<Keychain, 'id'> & { id?: string }) => {
-    await supabase.from('keychains').upsert({ ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] });
+    const item = { ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] } as Keychain;
+    setKeychains(prev => { const next = [...prev.filter(k => k.id !== item.id), item]; writeCache(CACHE_KEY_KEYCHAINS, next); return next; });
+    await supabase.from('keychains').upsert(item);
   }, []);
 
   const deleteKeychain = useCallback(async (id: string) => {
+    setKeychains(prev => { const next = prev.filter(k => k.id !== id); writeCache(CACHE_KEY_KEYCHAINS, next); return next; });
     await supabase.from('keychains').delete().eq('id', id);
   }, []);
 
