@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Sticker, Category } from '../data/stickers';
+import type { Sticker, Category, Keychain } from '../data/stickers';
 import { DEFAULT_STICKERS, DEFAULT_CATEGORIES } from '../data/stickers';
 
 // ── Banner ─────────────────────────────────────────────────────────────────────
@@ -25,6 +25,7 @@ const BANNER_KEY = 'banner';
 // ── Cache helpers ──────────────────────────────────────────────────────────────
 const CACHE_KEY_STICKERS   = 'dd_cache_stickers';
 const CACHE_KEY_CATEGORIES = 'dd_cache_categories';
+const CACHE_KEY_KEYCHAINS  = 'dd_cache_keychains';
 const CACHE_KEY_BANNER     = 'dd_cache_banner';
 
 function readCache<T>(key: string): T[] {
@@ -43,12 +44,15 @@ function writeCache(key: string, data: unknown) {
 interface DataCtx {
   stickers: Sticker[];
   categories: Category[];
+  keychains: Keychain[];
   banner: BannerSettings;
   loading: boolean;
   upsertSticker: (data: Omit<Sticker, 'id'> & { id?: string }) => Promise<void>;
   deleteSticker: (id: string) => Promise<void>;
   upsertCategory: (data: Omit<Category, 'id'> & { id?: string }) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  upsertKeychain: (data: Omit<Keychain, 'id'> & { id?: string }) => Promise<void>;
+  deleteKeychain: (id: string) => Promise<void>;
   saveBanner: (b: BannerSettings) => Promise<void>;
   resetDefaults: () => Promise<void>;
 }
@@ -65,19 +69,22 @@ export function useData() {
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const cachedStickers   = readCache<Sticker>(CACHE_KEY_STICKERS);
   const cachedCategories = readCache<Category>(CACHE_KEY_CATEGORIES);
+  const cachedKeychains  = readCache<Keychain>(CACHE_KEY_KEYCHAINS);
   const cachedBanner     = readCacheObj<BannerSettings>(CACHE_KEY_BANNER, DEFAULT_BANNER);
 
   const [stickers,   setStickers]   = useState<Sticker[]>(cachedStickers);
   const [categories, setCategories] = useState<Category[]>(cachedCategories);
+  const [keychains,  setKeychains]  = useState<Keychain[]>(cachedKeychains);
   const [banner,     setBanner]     = useState<BannerSettings>(cachedBanner);
   const [loading, setLoading] = useState(cachedStickers.length === 0 && cachedCategories.length === 0);
 
   // ── Initial fetch ────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
-      const [{ data: cats }, { data: stks }, { data: settings }] = await Promise.all([
+      const [{ data: cats }, { data: stks }, { data: kcs }, { data: settings }] = await Promise.all([
         supabase.from('categories').select('*'),
         supabase.from('stickers').select('*'),
+        supabase.from('keychains').select('*'),
         supabase.from('settings').select('*').eq('key', BANNER_KEY).maybeSingle(),
       ]);
 
@@ -99,6 +106,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         writeCache(CACHE_KEY_CATEGORIES, freshCats);
         writeCache(CACHE_KEY_STICKERS, freshStks);
       }
+
+      // Keychains (independent of seed)
+      const freshKcs = (kcs ?? []) as Keychain[];
+      setKeychains(freshKcs);
+      writeCache(CACHE_KEY_KEYCHAINS, freshKcs);
 
       // Load banner settings
       if (settings?.value) {
@@ -140,6 +152,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       })
       .subscribe();
 
+    const keychainsCh = supabase
+      .channel('keychains-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'keychains' }, ({ eventType, new: n, old: o }) => {
+        setKeychains(prev => {
+          const next = eventType === 'DELETE'
+            ? prev.filter(k => k.id !== (o as Keychain).id)
+            : [...prev.filter(k => k.id !== (n as Keychain).id), n as Keychain];
+          writeCache(CACHE_KEY_KEYCHAINS, next);
+          return next;
+        });
+      })
+      .subscribe();
+
     const settingsCh = supabase
       .channel('settings-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, ({ new: n }) => {
@@ -154,6 +179,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       supabase.removeChannel(stickersCh);
       supabase.removeChannel(categoriesCh);
+      supabase.removeChannel(keychainsCh);
       supabase.removeChannel(settingsCh);
     };
   }, []);
@@ -175,6 +201,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await supabase.from('categories').delete().eq('id', id);
   }, []);
 
+  const upsertKeychain = useCallback(async (data: Omit<Keychain, 'id'> & { id?: string }) => {
+    await supabase.from('keychains').upsert({ ...data, id: data.id ?? Date.now().toString(), images: data.images ?? [] });
+  }, []);
+
+  const deleteKeychain = useCallback(async (id: string) => {
+    await supabase.from('keychains').delete().eq('id', id);
+  }, []);
+
   const saveBanner = useCallback(async (b: BannerSettings) => {
     await supabase.from('settings').upsert({ key: BANNER_KEY, value: b });
   }, []);
@@ -187,7 +221,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <DataContext.Provider value={{ stickers, categories, banner, loading, upsertSticker, deleteSticker, upsertCategory, deleteCategory, saveBanner, resetDefaults }}>
+    <DataContext.Provider value={{ stickers, categories, keychains, banner, loading, upsertSticker, deleteSticker, upsertCategory, deleteCategory, upsertKeychain, deleteKeychain, saveBanner, resetDefaults }}>
       {children}
     </DataContext.Provider>
   );

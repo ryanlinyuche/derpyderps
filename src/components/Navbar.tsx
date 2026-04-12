@@ -122,6 +122,20 @@ export default function Navbar() {
             );
           })}
 
+          {/* Keychains link */}
+          <Link
+            to="/keychains"
+            className="flex-shrink-0 flex items-center gap-1.5 text-sm font-bold px-5 py-2 rounded-full transition-all whitespace-nowrap"
+            style={{
+              background: pathname === '/keychains' || pathname.startsWith('/keychain/') ? '#2a80b9' : 'transparent',
+              color: pathname === '/keychains' || pathname.startsWith('/keychain/') ? 'white' : '#264653',
+              border: pathname === '/keychains' || pathname.startsWith('/keychain/') ? 'none' : '1px solid rgba(42,128,185,0.25)',
+            }}
+          >
+            <span>🔑</span>
+            <span>Keychains</span>
+          </Link>
+
           <Link
             to="/about"
             className="flex-shrink-0 text-sm font-semibold px-4 py-1.5 rounded-full transition-all whitespace-nowrap sm:hidden"

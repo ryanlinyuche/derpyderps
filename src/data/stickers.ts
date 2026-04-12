@@ -2,11 +2,31 @@ export interface Sticker {
   id: string;
   name: string;
   image: string;
-  images?: string[];   // additional angle / detail images
+  images?: string[];
   price: number;
   category_id: string;
   featured?: boolean;
   description?: string;
+}
+
+export interface Keychain {
+  id: string;
+  name: string;
+  image: string;
+  images?: string[];
+  price: number;
+  featured?: boolean;
+  description?: string;
+  collection?: string;
+}
+
+// Minimal shape needed for cart — both Sticker and Keychain satisfy this
+export interface CartProduct {
+  id: string;
+  name: string;
+  image: string;
+  price: number;
+  kind?: 'sticker' | 'keychain';
 }
 
 export interface Category {

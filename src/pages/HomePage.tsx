@@ -1,7 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import FeaturedCarousel from '../components/FeaturedCarousel';
 import CategoryCard from '../components/CategoryCard';
 import StickerMarquee from '../components/StickerMarquee';
+import KeychainCard from '../components/KeychainCard';
 import { useInView } from '../hooks/useInView';
 
 function ScrollReveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -22,8 +24,11 @@ function ScrollReveal({ children, delay = 0, className = '' }: { children: React
 }
 
 export default function HomePage() {
-  const { stickers, categories, banner } = useData();
+  const navigate = useNavigate();
+  const { stickers, categories, banner, keychains } = useData();
   const featured = stickers.filter(s => s.featured);
+  const featuredKeychains = keychains.filter(k => k.featured).slice(0, 4);
+  const previewKeychains = featuredKeychains.length > 0 ? featuredKeychains : keychains.slice(0, 4);
 
   return (
     <main>
@@ -61,6 +66,29 @@ export default function HomePage() {
       {featured.length > 0 && (
         <ScrollReveal className="max-w-6xl mx-auto px-4 pt-10">
           <FeaturedCarousel stickers={featured} />
+        </ScrollReveal>
+      )}
+
+      {/* ── Keychains teaser ── */}
+      {previewKeychains.length > 0 && (
+        <ScrollReveal className="max-w-6xl mx-auto px-4 pt-10 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔑</span>
+              <h2 className="font-display text-2xl" style={{ color: '#264653' }}>Keychains</h2>
+            </div>
+            <button
+              onClick={() => navigate('/keychains')}
+              className="text-sm font-semibold text-[#2a80b9] hover:underline"
+            >
+              View all →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {previewKeychains.map((k, i) => (
+              <KeychainCard key={k.id} keychain={k} index={i} />
+            ))}
+          </div>
         </ScrollReveal>
       )}
 

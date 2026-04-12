@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isAdminLoggedIn, adminLogin, adminLogout } from '../data/stickers';
-import type { Sticker, Category } from '../data/stickers';
+import type { Sticker, Category, Keychain } from '../data/stickers';
 import { useData } from '../context/DataContext';
 import type { BannerSettings } from '../context/DataContext';
 import { DEFAULT_BANNER } from '../context/DataContext';
@@ -20,6 +20,10 @@ const COLOR_OPTIONS = [
 
 const emptySticker = (category_id = ''): Omit<Sticker, 'id'> => ({
   name: '', image: '', images: [], price: 3.99, category_id, featured: false, description: ''
+});
+
+const emptyKeychain = (): Omit<Keychain, 'id'> => ({
+  name: '', image: '', images: [], price: 9.99, featured: false, description: '', collection: ''
 });
 
 const emptyCategory = (): Omit<Category, 'id'> => ({
@@ -163,18 +167,115 @@ function StickerForm({
   );
 }
 
+// ─── Keychain form ────────────────────────────────────────────────────────────
+function KeychainForm({
+  initial, onSave, onCancel,
+}: {
+  initial: Omit<Keychain, 'id'> & { id?: string };
+  onSave: (data: Omit<Keychain, 'id'> & { id?: string }) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState(initial);
+
+  return (
+    <div className="bg-[#f0f8ff] rounded-2xl border border-[#9ED4FB] p-4 mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Name *</label>
+          <input className="input-field" placeholder="Keychain name" value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Price *</label>
+          <input className="input-field" type="number" step="0.01" min="0" value={form.price}
+            onChange={e => setForm(f => ({ ...f, price: parseFloat(e.target.value) }))} />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Collection (optional)</label>
+          <input className="input-field" placeholder="e.g. Duck Series" value={form.collection ?? ''}
+            onChange={e => setForm(f => ({ ...f, collection: e.target.value }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <ImageUpload value={form.image} onChange={v => setForm(f => ({ ...f, image: v }))} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-semibold text-slate-500 mb-1 block">Description</label>
+          <input className="input-field" placeholder="Optional description" value={form.description ?? ''}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id={`kfeat-${form.id ?? 'new'}`} checked={form.featured ?? false}
+            onChange={e => setForm(f => ({ ...f, featured: e.target.checked }))}
+            className="w-4 h-4 accent-blue-600" />
+          <label htmlFor={`kfeat-${form.id ?? 'new'}`} className="text-sm font-medium text-slate-700">⭐ Featured keychain</label>
+        </div>
+      </div>
+
+      {/* Additional angles */}
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            Additional Angles
+            <span className="ml-1.5 font-normal text-slate-400 normal-case">(shown in gallery)</span>
+          </span>
+          <button type="button"
+            onClick={() => setForm(f => ({ ...f, images: [...(f.images ?? []), ''] }))}
+            className="text-xs font-bold text-[#2a80b9] hover:text-[#1f6a9e] border border-[#9ED4FB] px-3 py-1 rounded-lg transition-colors">
+            + Add Angle
+          </button>
+        </div>
+        {(form.images ?? []).length === 0 ? (
+          <p className="text-xs text-slate-400 italic">No extra angles yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(form.images ?? []).map((img, i) => (
+              <div key={i} className="relative">
+                <ImageUpload
+                  value={img}
+                  onChange={v => setForm(f => {
+                    const imgs = [...(f.images ?? [])]; imgs[i] = v;
+                    return { ...f, images: imgs };
+                  })}
+                />
+                <button type="button"
+                  onClick={() => setForm(f => ({ ...f, images: (f.images ?? []).filter((_, idx) => idx !== i) }))}
+                  className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center shadow transition-colors"
+                  title="Remove">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 mt-4">
+        <button onClick={() => onSave(form)}
+          className="bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all active:scale-95">
+          {form.id ? 'Save Changes' : 'Add Keychain'}
+        </button>
+        <button onClick={onCancel} className="text-slate-500 hover:text-slate-700 px-4 py-2 rounded-xl text-sm transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main admin page ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { stickers, categories, banner, upsertSticker, deleteSticker: dbDeleteSticker, upsertCategory, deleteCategory: dbDeleteCategory, saveBanner, resetDefaults } = useData();
+  const { stickers, categories, keychains, banner, upsertSticker, deleteSticker: dbDeleteSticker, upsertCategory, deleteCategory: dbDeleteCategory, upsertKeychain, deleteKeychain: dbDeleteKeychain, saveBanner, resetDefaults } = useData();
 
   const [loggedIn, setLoggedIn] = useState(isAdminLoggedIn());
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Navigation: null = category grid, string = category id, 'banner' = banner editor
+  // Navigation: null = category grid, string = category id, 'banner' = banner editor, 'keychains' = keychain manager
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const [showBannerEditor, setShowBannerEditor] = useState(false);
+  const [showKeychains, setShowKeychains] = useState(false);
+
+  // Keychain form state
+  const [keychainFormData, setKeychainFormData] = useState<(Omit<Keychain, 'id'> & { id?: string }) | null>(null);
 
   // Banner form state
   const [bannerForm, setBannerForm] = useState<BannerSettings>(DEFAULT_BANNER);
@@ -250,6 +351,17 @@ export default function AdminPage() {
     if (confirm('Delete this sticker?')) await dbDeleteSticker(id);
   };
 
+  // ── Keychain actions ──
+  const saveKeychain = async (data: Omit<Keychain, 'id'> & { id?: string }) => {
+    if (!data.name || !data.image) return;
+    await upsertKeychain(data);
+    setKeychainFormData(null);
+  };
+
+  const deleteKeychain = async (id: string) => {
+    if (confirm('Delete this keychain?')) await dbDeleteKeychain(id);
+  };
+
   // ─────────────────────────────────────────────────────────────────────────────
   // LOGIN SCREEN
   if (!loggedIn) return (
@@ -279,12 +391,12 @@ export default function AdminPage() {
 
   // ─────────────────────────────────────────────────────────────────────────────
   // SHARED HEADER
-  const isSubPage = activeCatId || showBannerEditor;
+  const isSubPage = activeCatId || showBannerEditor || showKeychains;
   const Header = () => (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
         {isSubPage && (
-          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); }}
+          <button onClick={() => { setActiveCatId(null); setShowBannerEditor(false); setShowKeychains(false); }}
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#2a80b9] transition-colors">
             ← Admin Panel
           </button>
@@ -449,6 +561,80 @@ export default function AdminPage() {
       </main>
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // KEYCHAINS VIEW
+  if (showKeychains) return (
+    <main className="max-w-4xl mx-auto px-4 py-8">
+      <Header />
+
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9ED4FB] to-[#2a80b9] flex items-center justify-center text-xl shadow">🔑</div>
+        <div>
+          <h2 className="font-display text-2xl text-[#264653]">Keychains</h2>
+          <p className="text-xs text-slate-400">{keychains.length} keychain{keychains.length !== 1 ? 's' : ''}</p>
+        </div>
+        <button
+          onClick={() => setKeychainFormData(keychainFormData && !keychainFormData.id ? null : emptyKeychain())}
+          className="ml-auto bg-[#2a80b9] hover:bg-[#1f6a9e] text-white px-4 py-2 rounded-xl font-semibold text-sm shadow transition-all active:scale-95">
+          + Add Keychain
+        </button>
+      </div>
+
+      {/* New keychain form */}
+      {keychainFormData && !keychainFormData.id && (
+        <KeychainForm
+          initial={keychainFormData}
+          onSave={saveKeychain}
+          onCancel={() => setKeychainFormData(null)}
+        />
+      )}
+
+      {keychains.length === 0 && !keychainFormData && (
+        <p className="text-slate-400 text-sm italic py-8 text-center">No keychains yet. Click + Add Keychain to get started.</p>
+      )}
+
+      <div className="flex flex-col gap-3 mt-4">
+        {keychains.map(k => (
+          <div key={k.id}>
+            <div className="bg-white rounded-2xl shadow-sm border border-[#DEF1FF] flex items-center gap-4 p-3 hover:shadow-md transition-shadow">
+              <img src={k.image} alt={k.name}
+                className="w-16 h-16 object-contain rounded-xl bg-[#DEF1FF] flex-shrink-0 mix-blend-multiply p-1" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-[#264653] truncate">{k.name}</p>
+                <p className="text-[#2a80b9] text-xs font-bold">${k.price.toFixed(2)}</p>
+                {k.featured && <span className="text-xs text-yellow-600">⭐ Featured</span>}
+                {k.collection && <p className="text-xs text-slate-400 truncate">🔑 {k.collection}</p>}
+              </div>
+              {(k.images ?? []).length > 0 && (
+                <span className="text-xs text-slate-400 flex-shrink-0">{(k.images ?? []).length} angle{(k.images ?? []).length !== 1 ? 's' : ''}</span>
+              )}
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setKeychainFormData(keychainFormData?.id === k.id ? null : { ...k })}
+                  className="text-xs bg-[#DEF1FF] hover:bg-[#9ED4FB]/40 text-[#2a80b9] px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                  {keychainFormData?.id === k.id ? 'Close' : 'Edit'}
+                </button>
+                <button onClick={() => deleteKeychain(k.id)}
+                  className="text-xs bg-red-50 hover:bg-red-100 text-red-500 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {/* Inline edit form */}
+            {keychainFormData?.id === k.id && (
+              <KeychainForm
+                initial={keychainFormData}
+                onSave={saveKeychain}
+                onCancel={() => setKeychainFormData(null)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </main>
+  );
 
   // ─────────────────────────────────────────────────────────────────────────────
   // BANNER EDITOR VIEW
@@ -620,6 +806,22 @@ export default function AdminPage() {
           <div className="flex-1 min-w-0">
             <p className="font-bold text-[#264653] group-hover:text-[#2a80b9] transition-colors">Home Banner</p>
             <p className="text-xs text-slate-400 mt-0.5 truncate">"{banner.title} {banner.titleHighlight}" · {banner.tags.length} badge{banner.tags.length !== 1 ? 's' : ''}</p>
+          </div>
+          <span className="text-slate-300 group-hover:text-[#2a80b9] text-xl transition-colors flex-shrink-0">›</span>
+        </div>
+      </button>
+
+      {/* Keychains card */}
+      <button
+        onClick={() => { setKeychainFormData(null); setShowKeychains(true); }}
+        className="group w-full bg-gradient-to-r from-[#9ED4FB]/40 to-[#DEF1FF] rounded-2xl border border-[#9ED4FB] hover:shadow-md text-left transition-all hover:-translate-y-0.5 active:scale-[0.99] mb-4 overflow-hidden"
+      >
+        <div className="h-1.5 bg-gradient-to-r from-[#2a80b9] to-[#9ED4FB]" />
+        <div className="p-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2a80b9] to-[#9ED4FB] flex items-center justify-center text-2xl shadow flex-shrink-0">🔑</div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-[#264653] group-hover:text-[#2a80b9] transition-colors">Keychains</p>
+            <p className="text-xs text-slate-400 mt-0.5">{keychains.length} keychain{keychains.length !== 1 ? 's' : ''}</p>
           </div>
           <span className="text-slate-300 group-hover:text-[#2a80b9] text-xl transition-colors flex-shrink-0">›</span>
         </div>

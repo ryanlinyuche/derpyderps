@@ -1,11 +1,11 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Sticker } from '../data/stickers';
+import type { CartProduct } from '../data/stickers';
 
-interface CartItem extends Sticker { qty: number; }
+interface CartItem extends CartProduct { qty: number; }
 interface CartContextType {
   items: CartItem[];
-  addToCart: (s: Sticker) => void;
+  addToCart: (p: CartProduct) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   isOpen: boolean;
@@ -20,11 +20,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  const addToCart = (s: Sticker) => {
+  const addToCart = (p: CartProduct) => {
     setItems(prev => {
-      const exists = prev.find(i => i.id === s.id);
-      if (exists) return prev.map(i => i.id === s.id ? { ...i, qty: i.qty + 1 } : i);
-      return [...prev, { ...s, qty: 1 }];
+      const exists = prev.find(i => i.id === p.id);
+      if (exists) return prev.map(i => i.id === p.id ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { ...p, qty: 1 }];
     });
     setIsOpen(true);
   };

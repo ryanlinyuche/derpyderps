@@ -4,6 +4,8 @@ import CategoryPage from './pages/CategoryPage';
 import AdminPage from './pages/AdminPage';
 import AboutPage from './pages/AboutPage';
 import StickerDetailPage from './pages/StickerDetailPage';
+import KeychainsPage from './pages/KeychainsPage';
+import KeychainDetailPage from './pages/KeychainDetailPage';
 import Navbar from './components/Navbar';
 import CartDrawer from './components/CartDrawer';
 import { CartProvider } from './context/CartContext';
@@ -21,6 +23,8 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/category/:id" element={<CategoryPage />} />
               <Route path="/sticker/:id" element={<StickerDetailPage />} />
+              <Route path="/keychains" element={<KeychainsPage />} />
+              <Route path="/keychain/:id" element={<KeychainDetailPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/admin" element={<AdminPage />} />
             </Routes>
