@@ -71,6 +71,16 @@ export default function FeaturedCarousel({ stickers }: Props) {
             </div>
           </div>
 
+          {/* Dots */}
+          <div className="absolute bottom-3 right-6 flex gap-2">
+            {stickers.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                className={`rounded-full transition-all ${i === current ? 'bg-white w-5 h-2' : 'bg-white/40 w-2 h-2'}`}
+              />
+            ))}
+          </div>
         </div>
 
         <button
@@ -83,35 +93,6 @@ export default function FeaturedCarousel({ stickers }: Props) {
         >›</button>
       </div>
 
-      {/* Thumbnail strip */}
-      <div className="flex gap-3 mt-4 overflow-x-auto pb-2">
-        {stickers.map((st, i) => {
-          const active = i === current;
-          return (
-            <button
-              key={st.id}
-              onClick={() => goTo(i)}
-              className="flex-shrink-0 flex items-center justify-center rounded-2xl shadow-md transition-all duration-200"
-              style={{
-                width: 80,
-                height: 80,
-                background: active ? 'white' : '#DEF1FF',
-                outline: active ? '3px solid #2a80b9' : '2px solid transparent',
-                outlineOffset: '2px',
-                opacity: active ? 1 : 0.75,
-                transform: active ? 'scale(1.04) translate(2px, 2px)' : 'scale(1)',
-              }}
-            >
-              <img
-                src={st.image}
-                alt={st.name}
-                className="object-contain mix-blend-multiply"
-                style={{ width: 62, height: 62 }}
-              />
-            </button>
-          );
-        })}
-      </div>
     </section>
   );
 }
